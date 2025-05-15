@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "57252251763",
+    "project_id": "yumcart-67816",
+    "storage_bucket": "yumcart-67816.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:57252251763:android:72f3a2291698c4c47b4206",
+        "android_client_info": {
+          "package_name": "com.example.yum_cart"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAZWbG7IG1EP3MGa8r6wI0w_ZGce0PmtV4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
