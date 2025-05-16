@@ -2,6 +2,25 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+void main() {
+  runApp(MyApp());
+}
+
+class MyApp extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'Register Page',
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(
+        primarySwatch: Colors.pink,
+        scaffoldBackgroundColor: Colors.transparent,
+      ),
+      home: RegisterPage(),
+    );
+  }
+}
+
 class RegisterPage extends StatefulWidget {
   @override
   _RegisterPageState createState() => _RegisterPageState();
@@ -14,7 +33,6 @@ class _RegisterPageState extends State<RegisterPage> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
-  bool _isLoading = false;
 
   // User type selection (buyer or seller)
   String _userType = 'buyer'; // Default selection
@@ -67,10 +85,7 @@ class _RegisterPageState extends State<RegisterPage> {
             children: [
               // Status Bar / Top area
               Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 8,
-                ),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -83,11 +98,7 @@ class _RegisterPageState extends State<RegisterPage> {
                     ),
                     Row(
                       children: [
-                        Icon(
-                          Icons.signal_cellular_4_bar,
-                          color: Colors.white,
-                          size: 16,
-                        ),
+                        Icon(Icons.signal_cellular_4_bar, color: Colors.white, size: 16),
                         SizedBox(width: 4),
                         Icon(Icons.wifi, color: Colors.white, size: 16),
                         SizedBox(width: 4),
@@ -175,10 +186,7 @@ class _RegisterPageState extends State<RegisterPage> {
                                         color: Colors.white,
                                         borderRadius: BorderRadius.circular(8),
                                       ),
-                                      padding: EdgeInsets.symmetric(
-                                        vertical: 4,
-                                        horizontal: 12,
-                                      ),
+                                      padding: EdgeInsets.symmetric(vertical: 4, horizontal: 12),
                                       child: Row(
                                         children: [
                                           Expanded(
@@ -251,13 +259,9 @@ class _RegisterPageState extends State<RegisterPage> {
                                       controller: _fullNameController,
                                       decoration: InputDecoration(
                                         border: UnderlineInputBorder(),
-                                        contentPadding: EdgeInsets.only(
-                                          bottom: 4,
-                                        ),
+                                        contentPadding: EdgeInsets.only(bottom: 4),
                                         hintText: 'John Doe',
-                                        hintStyle: TextStyle(
-                                          color: Colors.grey,
-                                        ),
+                                        hintStyle: TextStyle(color: Colors.grey),
                                       ),
                                       style: TextStyle(
                                         fontSize: 14,
@@ -285,13 +289,9 @@ class _RegisterPageState extends State<RegisterPage> {
                                       keyboardType: TextInputType.phone,
                                       decoration: InputDecoration(
                                         border: UnderlineInputBorder(),
-                                        contentPadding: EdgeInsets.only(
-                                          bottom: 4,
-                                        ),
+                                        contentPadding: EdgeInsets.only(bottom: 4),
                                         hintText: '+60 12 345 6789',
-                                        hintStyle: TextStyle(
-                                          color: Colors.grey,
-                                        ),
+                                        hintStyle: TextStyle(color: Colors.grey),
                                       ),
                                       style: TextStyle(
                                         fontSize: 14,
@@ -318,13 +318,9 @@ class _RegisterPageState extends State<RegisterPage> {
                                       controller: _addressController,
                                       decoration: InputDecoration(
                                         border: UnderlineInputBorder(),
-                                        contentPadding: EdgeInsets.only(
-                                          bottom: 4,
-                                        ),
+                                        contentPadding: EdgeInsets.only(bottom: 4),
                                         hintText: 'Lot #15, KG Sungai Baru',
-                                        hintStyle: TextStyle(
-                                          color: Colors.grey,
-                                        ),
+                                        hintStyle: TextStyle(color: Colors.grey),
                                       ),
                                       style: TextStyle(
                                         fontSize: 14,
@@ -352,13 +348,9 @@ class _RegisterPageState extends State<RegisterPage> {
                                       keyboardType: TextInputType.emailAddress,
                                       decoration: InputDecoration(
                                         border: UnderlineInputBorder(),
-                                        contentPadding: EdgeInsets.only(
-                                          bottom: 4,
-                                        ),
+                                        contentPadding: EdgeInsets.only(bottom: 4),
                                         hintText: 'hello@example.com',
-                                        hintStyle: TextStyle(
-                                          color: Colors.grey,
-                                        ),
+                                        hintStyle: TextStyle(color: Colors.grey),
                                       ),
                                       style: TextStyle(
                                         fontSize: 14,
@@ -386,13 +378,9 @@ class _RegisterPageState extends State<RegisterPage> {
                                       obscureText: true,
                                       decoration: InputDecoration(
                                         border: UnderlineInputBorder(),
-                                        contentPadding: EdgeInsets.only(
-                                          bottom: 4,
-                                        ),
+                                        contentPadding: EdgeInsets.only(bottom: 4),
                                         hintText: '•••••••••',
-                                        hintStyle: TextStyle(
-                                          color: Colors.grey,
-                                        ),
+                                        hintStyle: TextStyle(color: Colors.grey),
                                       ),
                                       style: TextStyle(
                                         fontSize: 14,
@@ -406,117 +394,67 @@ class _RegisterPageState extends State<RegisterPage> {
                                 Center(
                                   child: Container(
                                     width: 200,
-                                    child: ElevatedButton(
-                                      onPressed: () async {
-                                        if (_formKey.currentState!.validate()) {
-                                          try {
-                                            // Show loading spinner
-                                            setState(() {
-                                              _isLoading = true;
-                                            });
+                                    child: ElevatedButton(onPressed: () async {
+                                      if (_formKey.currentState!.validate()) {
+                                        try {
+                                          // Show loading
+                                          showDialog(
+                                            context: context,
+                                            barrierDismissible: false,
+                                            builder: (context) => Center(child: CircularProgressIndicator()),
+                                          );
 
-                                            // 1. Create the user in Firebase Authentication
-                                            UserCredential
-                                            userCredential = await FirebaseAuth
-                                                .instance
-                                                .createUserWithEmailAndPassword(
-                                                  email:
-                                                      _emailController.text
-                                                          .trim(),
-                                                  password:
-                                                      _passwordController.text,
-                                                );
+                                          // Create user with email/password
+                                          final userCredential = await FirebaseAuth.instance.createUserWithEmailAndPassword(
+                                            email: _emailController.text.trim(),
+                                            password: _passwordController.text,
+                                          );
 
-                                            // 2. Store additional user info in Firestore (Firebase's database)
-                                            await FirebaseFirestore.instance
-                                                .collection('users')
-                                                .doc(userCredential.user!.uid)
-                                                .set({
-                                                  'fullName':
-                                                      _fullNameController.text,
-                                                  'phone':
-                                                      _phoneController.text,
-                                                  'address':
-                                                      _addressController.text,
-                                                  'email':
-                                                      _emailController.text
-                                                          .trim(),
-                                                  'role':
-                                                      _userType, // 'buyer' or 'seller'
-                                                  'createdAt':
-                                                      FieldValue.serverTimestamp(),
-                                                });
+                                          // Store additional user data
+                                          await FirebaseFirestore.instance.collection('users').doc(userCredential.user!.uid).set({
+                                            'fullName': _fullNameController.text,
+                                            'phone': _phoneController.text,
+                                            'address': _addressController.text,
+                                            'email': _emailController.text,
+                                            'userType': _userType,
+                                            'createdAt': FieldValue.serverTimestamp(),
+                                          });
 
-                                            // Hide loading spinner
-                                            setState(() {
-                                              _isLoading = false;
-                                            });
+                                          // Close loading dialog
+                                          Navigator.of(context).pop();
 
-                                            // Show success message
-                                            ScaffoldMessenger.of(
-                                              context,
-                                            ).showSnackBar(
-                                              SnackBar(
-                                                content: Text(
-                                                  'Registration successful!',
-                                                ),
-                                                backgroundColor: Colors.green,
-                                              ),
-                                            );
+                                          // Show success
+                                          ScaffoldMessenger.of(context).showSnackBar(
+                                            SnackBar(
+                                              content: Text('Registration successful!'),
+                                              backgroundColor: Colors.green,
+                                            ),
+                                          );
 
-                                            // Navigate to login page
-                                            Navigator.pushReplacementNamed(
-                                              context,
-                                              '/login',
-                                            );
-                                          } on FirebaseAuthException catch (e) {
-                                            // Handle specific Firebase Auth errors
-                                            setState(() {
-                                              _isLoading = false;
-                                            });
+                                          // Navigate to home or login page
+                                          // Navigator.of(context).pushReplacementNamed('/home');
 
-                                            String errorMessage;
-                                            switch (e.code) {
-                                              case 'email-already-in-use':
-                                                errorMessage =
-                                                    'This email is already registered.';
-                                                break;
-                                              case 'weak-password':
-                                                errorMessage =
-                                                    'Password is too weak. Use at least 6 characters.';
-                                                break;
-                                              case 'invalid-email':
-                                                errorMessage =
-                                                    'Invalid email address.';
-                                                break;
-                                              default:
-                                                errorMessage =
-                                                    e.message ??
-                                                    'An error occurred.';
-                                            }
+                                        } catch (e) {
+                                          // Close loading dialog
+                                          Navigator.of(context).pop();
 
-                                            ScaffoldMessenger.of(
-                                              context,
-                                            ).showSnackBar(
-                                              SnackBar(
-                                                content: Text(errorMessage),
-                                                backgroundColor: Colors.red,
-                                              ),
-                                            );
-                                          }
+                                          // Show error
+                                          ScaffoldMessenger.of(context).showSnackBar(
+                                            SnackBar(
+                                              content: Text('Error: ${e.toString()}'),
+                                              backgroundColor: Colors.red,
+                                            ),
+                                          );
                                         }
-                                      },
+                                      }
+                                    },
                                       style: ElevatedButton.styleFrom(
                                         backgroundColor: Colors.white,
                                         foregroundColor: textColor,
                                         elevation: 0,
-                                        padding: EdgeInsets.symmetric(
-                                          vertical: 12,
-                                        ),
+                                        padding: EdgeInsets.symmetric(vertical: 12),
                                         shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(
-                                            20,
-                                          ),
+                                          borderRadius: BorderRadius.circular(20),
                                         ),
                                       ),
                                       child: Text(
@@ -544,9 +482,7 @@ class _RegisterPageState extends State<RegisterPage> {
                                       ),
                                       GestureDetector(
                                         onTap: () {
-                                          Navigator.of(
-                                            context,
-                                          ).pushReplacementNamed('/login');
+                                          Navigator.of(context).pushReplacementNamed('/login');
                                         },
                                         child: Text(
                                           'LOGIN HERE',

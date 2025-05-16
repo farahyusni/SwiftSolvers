@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+
 import '../services/auth_service.dart';
 import '../models/user_model.dart';
 
@@ -48,13 +49,44 @@ class AuthViewModel extends ChangeNotifier {
   }
 
   // Register user
-  Future<bool> register(String email, String password, String? displayName) async {
+  // Future<bool> register(String email, String password, String? displayName) async {
+  //   _isLoading = true;
+  //   _errorMessage = '';
+  //   notifyListeners();
+  //
+  //   try {
+  //     _currentUser = await _authService.register(email, password, displayName);
+  //     _isLoading = false;
+  //     notifyListeners();
+  //     return true;
+  //   } catch (e) {
+  //     _isLoading = false;
+  //     _errorMessage = e.toString();
+  //     notifyListeners();
+  //     return false;
+  //   }
+  // }
+  Future<bool> register({
+    required String email,
+    required String password,
+    required String fullName,
+    required String phone,
+    required String address,
+    required String userType,
+  }) async {
     _isLoading = true;
     _errorMessage = '';
     notifyListeners();
-    
+
     try {
-      _currentUser = await _authService.register(email, password, displayName);
+      _currentUser = await _authService.register(
+        email: email,
+        password: password,
+        fullName: fullName,
+        phone: phone,
+        address: address,
+        userType: userType,
+      );
       _isLoading = false;
       notifyListeners();
       return true;
