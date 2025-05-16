@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../views/auth/login_page.dart';
+import '../views/auth/register_page.dart';
 // Import other pages here
 
 class RouteGenerator {
@@ -11,7 +12,8 @@ class RouteGenerator {
       case '/':
       case '/login':
         return MaterialPageRoute(builder: (_) => LoginPage());
-      
+      case '/register':
+      return MaterialPageRoute(builder: (_) => RegisterPage());
       // Add your other routes here
       // case '/home':
       //   return MaterialPageRoute(builder: (_) => HomePage());

@@ -438,7 +438,7 @@ class _RegisterPageState extends State<RegisterPage> {
                                       ),
                                       GestureDetector(
                                         onTap: () {
-                                          print('Login clicked');
+                                          Navigator.of(context).pushReplacementNamed('/login');
                                         },
                                         child: Text(
                                           'LOGIN HERE',
