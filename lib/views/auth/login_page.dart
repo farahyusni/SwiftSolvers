@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../viewmodels/auth_viewmodel.dart';
 import '../../utils/app_theme.dart';
 
@@ -12,6 +14,7 @@ class _LoginPageState extends State<LoginPage> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
+  bool _isLoading = false;
 
   @override
   void dispose() {
@@ -24,7 +27,7 @@ class _LoginPageState extends State<LoginPage> {
   Widget build(BuildContext context) {
     // Apply theme locally for this page
     final theme = AppTheme.getTheme();
-    
+
     // Get screen size for responsive design
     final screenSize = MediaQuery.of(context).size;
     final isSmallScreen = screenSize.height < 700;
@@ -36,9 +39,7 @@ class _LoginPageState extends State<LoginPage> {
           builder: (context, authViewModel, _) {
             return SingleChildScrollView(
               child: ConstrainedBox(
-                constraints: BoxConstraints(
-                  minHeight: screenSize.height,
-                ),
+                constraints: BoxConstraints(minHeight: screenSize.height),
                 child: Container(
                   color: AppTheme.lightPinkColor,
                   child: Column(
@@ -46,7 +47,8 @@ class _LoginPageState extends State<LoginPage> {
                       // Top image section
                       Container(
                         width: double.infinity,
-                        height: screenSize.height * (isSmallScreen ? 0.35 : 0.4),
+                        height:
+                            screenSize.height * (isSmallScreen ? 0.35 : 0.4),
                         child: Stack(
                           children: [
                             // Vegetable image
@@ -138,9 +140,13 @@ class _LoginPageState extends State<LoginPage> {
                                 keyboardType: TextInputType.emailAddress,
                                 decoration: InputDecoration(
                                   hintText: 'hello@graduate.utm.my',
-                                  errorText: _emailController.text.isEmpty && authViewModel.errorMessage.isNotEmpty
-                                      ? 'Please enter your email'
-                                      : null,
+                                  errorText:
+                                      _emailController.text.isEmpty &&
+                                              authViewModel
+                                                  .errorMessage
+                                                  .isNotEmpty
+                                          ? 'Please enter your email'
+                                          : null,
                                 ),
                                 validator: (value) {
                                   if (value == null || value.isEmpty) {
@@ -165,9 +171,13 @@ class _LoginPageState extends State<LoginPage> {
                                 obscureText: true,
                                 decoration: InputDecoration(
                                   hintText: '•••••••••',
-                                  errorText: _passwordController.text.isEmpty && authViewModel.errorMessage.isNotEmpty
-                                      ? 'Please enter your password'
-                                      : null,
+                                  errorText:
+                                      _passwordController.text.isEmpty &&
+                                              authViewModel
+                                                  .errorMessage
+                                                  .isNotEmpty
+                                          ? 'Please enter your password'
+                                          : null,
                                 ),
                                 validator: (value) {
                                   if (value == null || value.isEmpty) {
@@ -183,7 +193,10 @@ class _LoginPageState extends State<LoginPage> {
                                 child: TextButton(
                                   onPressed: () {
                                     // Show forgot password dialog
-                                    _showForgotPasswordDialog(context, authViewModel);
+                                    _showForgotPasswordDialog(
+                                      context,
+                                      authViewModel,
+                                    );
                                   },
                                   child: Text(
                                     'Forgot password',
@@ -196,13 +209,16 @@ class _LoginPageState extends State<LoginPage> {
                               ),
 
                               // Error message
-                              if (authViewModel.errorMessage.isNotEmpty && 
-                                  _emailController.text.isNotEmpty && 
+                              if (authViewModel.errorMessage.isNotEmpty &&
+                                  _emailController.text.isNotEmpty &&
                                   _passwordController.text.isNotEmpty)
                                 Padding(
                                   padding: const EdgeInsets.only(top: 8.0),
                                   child: Text(
-                                    authViewModel.errorMessage.replaceAll('Exception: ', ''),
+                                    authViewModel.errorMessage.replaceAll(
+                                      'Exception: ',
+                                      '',
+                                    ),
                                     style: TextStyle(color: Colors.red),
                                     textAlign: TextAlign.center,
                                   ),
@@ -216,41 +232,134 @@ class _LoginPageState extends State<LoginPage> {
                                   width: 180,
                                   height: 45,
                                   child: ElevatedButton(
-                                    onPressed: authViewModel.isLoading
-                                        ? null
-                                        : () async {
-                                            if (_formKey.currentState!.validate()) {
-                                              await authViewModel.login(
-                                                _emailController.text.trim(),
-                                                _passwordController.text,
+                                    onPressed: () async {
+                                      if (_formKey.currentState!.validate()) {
+                                        try {
+                                          // Show loading spinner
+                                          setState(() {
+                                            _isLoading = true;
+                                          });
+
+                                          // Attempt to sign in with Firebase
+                                          UserCredential userCredential =
+                                              await FirebaseAuth.instance
+                                                  .signInWithEmailAndPassword(
+                                                    email:
+                                                        _emailController.text
+                                                            .trim(),
+                                                    password:
+                                                        _passwordController
+                                                            .text,
+                                                  );
+
+                                          // Hide loading spinner
+                                          setState(() {
+                                            _isLoading = false;
+                                          });
+
+                                          // Check user role and navigate accordingly
+                                          DocumentSnapshot userDoc =
+                                              await FirebaseFirestore.instance
+                                                  .collection('users')
+                                                  .doc(userCredential.user!.uid)
+                                                  .get();
+
+                                          if (userDoc.exists) {
+                                            Map<String, dynamic> userData =
+                                                userDoc.data()
+                                                    as Map<String, dynamic>;
+                                            String userRole =
+                                                userData['role'] ?? 'buyer';
+
+                                            // Navigate based on role
+                                            if (userRole == 'buyer') {
+                                              Navigator.pushReplacementNamed(
+                                                context,
+                                                '/buyer-home',
+                                              );
+                                            } else if (userRole == 'seller') {
+                                              Navigator.pushReplacementNamed(
+                                                context,
+                                                '/seller-home',
                                               );
                                             }
-                                          },
+                                          } else {
+                                            // If no role is found, default to buyer
+                                            Navigator.pushReplacementNamed(
+                                              context,
+                                              '/buyer-home',
+                                            );
+                                          }
+                                        } on FirebaseAuthException catch (e) {
+                                          // Hide loading spinner
+                                          setState(() {
+                                            _isLoading = false;
+                                          });
+
+                                          // Handle specific login errors
+                                          String errorMessage;
+                                          switch (e.code) {
+                                            case 'user-not-found':
+                                              errorMessage =
+                                                  'No user found with this email.';
+                                              break;
+                                            case 'wrong-password':
+                                              errorMessage =
+                                                  'Incorrect password.';
+                                              break;
+                                            case 'invalid-email':
+                                              errorMessage =
+                                                  'Invalid email address.';
+                                              break;
+                                            case 'user-disabled':
+                                              errorMessage =
+                                                  'This account has been disabled.';
+                                              break;
+                                            default:
+                                              errorMessage =
+                                                  e.message ??
+                                                  'An error occurred.';
+                                          }
+
+                                          ScaffoldMessenger.of(
+                                            context,
+                                          ).showSnackBar(
+                                            SnackBar(
+                                              content: Text(errorMessage),
+                                              backgroundColor: Colors.red,
+                                            ),
+                                          );
+                                        }
+                                      }
+                                    },
                                     style: ElevatedButton.styleFrom(
                                       backgroundColor: Colors.white,
                                       foregroundColor: AppTheme.textColor,
                                     ),
-                                    child: authViewModel.isLoading
-                                        ? SizedBox(
-                                            width: 20,
-                                            height: 20,
-                                            child: CircularProgressIndicator(
-                                              strokeWidth: 2,
-                                              valueColor: AlwaysStoppedAnimation<Color>(
-                                                  AppTheme.primaryColor),
+                                    child:
+                                        authViewModel.isLoading
+                                            ? SizedBox(
+                                              width: 20,
+                                              height: 20,
+                                              child: CircularProgressIndicator(
+                                                strokeWidth: 2,
+                                                valueColor:
+                                                    AlwaysStoppedAnimation<
+                                                      Color
+                                                    >(AppTheme.primaryColor),
+                                              ),
+                                            )
+                                            : Text(
+                                              'LOGIN',
+                                              style: TextStyle(
+                                                fontSize: 16,
+                                                fontWeight: FontWeight.bold,
+                                              ),
                                             ),
-                                          )
-                                        : Text(
-                                            'LOGIN',
-                                            style: TextStyle(
-                                              fontSize: 16,
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                          ),
                                   ),
                                 ),
                               ),
-                              
+
                               SizedBox(height: isSmallScreen ? 15 : 20),
 
                               // Register link
@@ -268,7 +377,9 @@ class _LoginPageState extends State<LoginPage> {
                                     GestureDetector(
                                       onTap: () {
                                         // Navigate to register page
-                                        Navigator.of(context).pushReplacementNamed('/register');
+                                        Navigator.of(
+                                          context,
+                                        ).pushReplacementNamed('/register');
                                       },
                                       child: Text(
                                         'REGISTER HERE',
@@ -297,11 +408,14 @@ class _LoginPageState extends State<LoginPage> {
       ),
     );
   }
-  
-  void _showForgotPasswordDialog(BuildContext context, AuthViewModel authViewModel) {
+
+  void _showForgotPasswordDialog(
+    BuildContext context,
+    AuthViewModel authViewModel,
+  ) {
     final TextEditingController resetEmailController = TextEditingController();
     final resetFormKey = GlobalKey<FormState>();
-    
+
     showDialog(
       context: context,
       builder: (context) {
@@ -335,31 +449,36 @@ class _LoginPageState extends State<LoginPage> {
               onPressed: () async {
                 if (resetFormKey.currentState!.validate()) {
                   Navigator.pop(context);
-                  
+
                   // Show loading dialog
                   showDialog(
                     context: context,
                     barrierDismissible: false,
-                    builder: (context) => Center(child: CircularProgressIndicator()),
+                    builder:
+                        (context) => Center(child: CircularProgressIndicator()),
                   );
-                  
+
                   try {
-                    await authViewModel.resetPassword(resetEmailController.text.trim());
-                    
+                    await authViewModel.resetPassword(
+                      resetEmailController.text.trim(),
+                    );
+
                     // Close loading dialog
                     Navigator.pop(context);
-                    
+
                     // Show success message
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
-                        content: Text('Password reset email sent. Check your inbox.'),
+                        content: Text(
+                          'Password reset email sent. Check your inbox.',
+                        ),
                         backgroundColor: Colors.green,
                       ),
                     );
                   } catch (e) {
                     // Close loading dialog
                     Navigator.pop(context);
-                    
+
                     // Show error message
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(

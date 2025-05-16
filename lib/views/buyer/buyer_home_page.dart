@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 
 // Add main function to make the file directly runnable
-void main() {
-  runApp(const MaterialApp(
-    debugShowCheckedModeBanner: false,
-    home: BuyerHomePage(),
-  ));
-}
+// void main() {
+//   runApp(const MaterialApp(
+//     debugShowCheckedModeBanner: false,
+//     home: BuyerHomePage(),
+//   ));
+// }
 
 class BuyerHomePage extends StatelessWidget {
   const BuyerHomePage({Key? key}) : super(key: key);
