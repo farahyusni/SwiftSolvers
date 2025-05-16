@@ -267,7 +267,8 @@ class _LoginPageState extends State<LoginPage> {
                                     ),
                                     GestureDetector(
                                       onTap: () {
-                                        authViewModel.toggleAuthView();
+                                        // Navigate to register page
+                                        Navigator.of(context).pushReplacementNamed('/register');
                                       },
                                       child: Text(
                                         'REGISTER HERE',
