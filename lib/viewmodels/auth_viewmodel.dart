@@ -1,7 +1,8 @@
 import 'package:flutter/foundation.dart';
-
+import 'package:firebase_auth/firebase_auth.dart'as firebase_auth;
 import '../services/auth_service.dart';
 import '../models/user_model.dart';
+
 
 class AuthViewModel extends ChangeNotifier {
   final AuthService _authService = AuthService();
@@ -105,12 +106,12 @@ class AuthViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
-  // Reset password
+// Reset password
   Future<bool> resetPassword(String email) async {
     _isLoading = true;
     _errorMessage = '';
     notifyListeners();
-    
+
     try {
       await _authService.resetPassword(email);
       _isLoading = false;

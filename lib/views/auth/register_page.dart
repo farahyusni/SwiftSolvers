@@ -32,7 +32,20 @@ class _RegisterPageState extends State<RegisterPage> {
   final TextEditingController _addressController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
+  final TextEditingController _confirmPasswordController = TextEditingController();
+
+  // Focus Nodes - Add these
+  final FocusNode _fullNameFocus = FocusNode();
+  final FocusNode _phoneFocus = FocusNode();
+  final FocusNode _addressFocus = FocusNode();
+  final FocusNode _emailFocus = FocusNode();
+  final FocusNode _passwordFocus = FocusNode();
+  final FocusNode _confirmPasswordFocus = FocusNode();
+
   final _formKey = GlobalKey<FormState>();
+
+  bool _obscurePassword = true;
+  bool _obscureConfirmPassword = true;
 
   // User type selection (buyer or seller)
   String _userType = 'buyer'; // Default selection
@@ -44,9 +57,24 @@ class _RegisterPageState extends State<RegisterPage> {
     _addressController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
+
+    // Dispose focus nodes
+    _fullNameFocus.dispose();
+    _phoneFocus.dispose();
+    _addressFocus.dispose();
+    _emailFocus.dispose();
+    _passwordFocus.dispose();
+    _confirmPasswordFocus.dispose();
+
     super.dispose();
   }
 
+  // Add this helper method to handle field validation and focus transition
+  void _fieldFocusChange(
+      BuildContext context, FocusNode currentFocus, FocusNode nextFocus) {
+    currentFocus.unfocus();
+    FocusScope.of(context).requestFocus(nextFocus);
+  }
   void _navigateToSellerRegistration() {
     // Demo function to navigate to seller registration
     ScaffoldMessenger.of(context).showSnackBar(
@@ -83,31 +111,6 @@ class _RegisterPageState extends State<RegisterPage> {
         child: SafeArea(
           child: Column(
             children: [
-              // Status Bar / Top area
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      '17:03',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    Row(
-                      children: [
-                        Icon(Icons.signal_cellular_4_bar, color: Colors.white, size: 16),
-                        SizedBox(width: 4),
-                        Icon(Icons.wifi, color: Colors.white, size: 16),
-                        SizedBox(width: 4),
-                        Icon(Icons.battery_full, color: Colors.white, size: 16),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
 
               // Main Content
               Expanded(
@@ -121,9 +124,9 @@ class _RegisterPageState extends State<RegisterPage> {
                     children: [
                       // Logo
                       Container(
-                        margin: EdgeInsets.only(top: 20),
-                        width: 60,
-                        height: 60,
+                        margin: EdgeInsets.only(top: 25),
+                        width: 80,
+                        height: 80,
                         decoration: BoxDecoration(
                           color: Colors.white,
                           shape: BoxShape.circle,
@@ -134,29 +137,13 @@ class _RegisterPageState extends State<RegisterPage> {
                               offset: Offset(0, 2),
                             ),
                           ],
-                        ),
-                        child: Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(
-                                Icons.shopping_cart,
-                                size: 24,
-                                color: primaryColor,
-                              ),
-                              Text(
-                                'YumCart',
-                                style: TextStyle(
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.bold,
-                                  fontFamily: 'Cursive',
-                                  color: primaryColor,
-                                ),
-                              ),
-                            ],
+                          image: DecorationImage(
+                            image: AssetImage('images/yumcart_logo.jpg'),
+                            fit: BoxFit.cover,
                           ),
                         ),
                       ),
+
 
                       // Form
                       Expanded(
@@ -345,6 +332,7 @@ class _RegisterPageState extends State<RegisterPage> {
                                     SizedBox(height: 4),
                                     TextFormField(
                                       controller: _emailController,
+                                      focusNode: _emailFocus,
                                       keyboardType: TextInputType.emailAddress,
                                       decoration: InputDecoration(
                                         border: UnderlineInputBorder(),
@@ -356,10 +344,31 @@ class _RegisterPageState extends State<RegisterPage> {
                                         fontSize: 14,
                                         color: textColor,
                                       ),
+                                      // Enable auto-validation
+                                      autovalidateMode: AutovalidateMode.onUserInteraction,
+                                      validator: (value) {
+                                        if (value == null || value.isEmpty) {
+                                          return 'Please enter your email';
+                                        }
+                                        if (!value.contains('@') || !value.contains('.')) {
+                                          return 'Please enter a valid email address';
+                                        }
+                                        return null;
+                                      },
+                                      onEditingComplete: () {
+                                        // Validate the field
+                                        if (_emailController.text.isNotEmpty &&
+                                            _emailController.text.contains('@') &&
+                                            _emailController.text.contains('.')) {
+                                          _fieldFocusChange(context, _emailFocus, _passwordFocus);
+                                        }
+                                        // Otherwise, keep focus on this field
+                                      },
                                     ),
                                   ],
                                 ),
 
+                                // Password
                                 // Password
                                 Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -375,17 +384,113 @@ class _RegisterPageState extends State<RegisterPage> {
                                     SizedBox(height: 4),
                                     TextFormField(
                                       controller: _passwordController,
-                                      obscureText: true,
+                                      focusNode: _passwordFocus,
+                                      obscureText: _obscurePassword,
                                       decoration: InputDecoration(
                                         border: UnderlineInputBorder(),
                                         contentPadding: EdgeInsets.only(bottom: 4),
                                         hintText: '•••••••••',
                                         hintStyle: TextStyle(color: Colors.grey),
+                                        suffixIcon: IconButton(
+                                          icon: Icon(
+                                            _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                                            color: Colors.grey,
+                                          ),
+                                          onPressed: () {
+                                            setState(() {
+                                              _obscurePassword = !_obscurePassword;
+                                            });
+                                          },
+                                        ),
                                       ),
                                       style: TextStyle(
                                         fontSize: 14,
                                         color: textColor,
                                       ),
+                                      // Enable auto-validation
+                                      autovalidateMode: AutovalidateMode.onUserInteraction,
+                                      validator: (value) {
+                                        if (value == null || value.isEmpty) {
+                                          return 'Please enter a password';
+                                        }
+                                        // Check length
+                                        if (value.length < 8) {
+                                          return 'Password must be at least 8 characters';
+                                        }
+                                        // Check for uppercase
+                                        if (!value.contains(RegExp(r'[A-Z]'))) {
+                                          return 'Password must contain at least one uppercase letter';
+                                        }
+                                        // Check for lowercase
+                                        if (!value.contains(RegExp(r'[a-z]'))) {
+                                          return 'Password must contain at least one lowercase letter';
+                                        }
+                                        // Check for digits
+                                        if (!value.contains(RegExp(r'[0-9]'))) {
+                                          return 'Password must contain at least one number';
+                                        }
+                                        return null;
+                                      },
+                                      onEditingComplete: () {
+                                        // Implement comprehensive password validation
+                                        bool isValid = _passwordController.text.length >= 8 &&
+                                            _passwordController.text.contains(RegExp(r'[A-Z]')) &&
+                                            _passwordController.text.contains(RegExp(r'[a-z]')) &&
+                                            _passwordController.text.contains(RegExp(r'[0-9]'));
+
+                                        if (isValid) {
+                                          _fieldFocusChange(context, _passwordFocus, _confirmPasswordFocus);
+                                        }
+                                        // Otherwise, keep focus on this field
+                                      },
+                                    ),
+                                  ],
+                                ),
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'CONFIRM PASSWORD',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.bold,
+                                        color: textColor,
+                                      ),
+                                    ),
+                                    SizedBox(height: 4),
+                                    TextFormField(
+                                      controller: _confirmPasswordController,
+                                      obscureText: _obscureConfirmPassword,
+                                      decoration: InputDecoration(
+                                        border: UnderlineInputBorder(),
+                                        contentPadding: EdgeInsets.only(bottom: 4),
+                                        hintText: '•••••••••',
+                                        hintStyle: TextStyle(color: Colors.grey),
+                                        suffixIcon: IconButton(
+                                          icon: Icon(
+                                            _obscureConfirmPassword ? Icons.visibility_off : Icons.visibility,
+                                            color: Colors.grey,
+                                          ),
+                                          onPressed: () {
+                                            setState(() {
+                                              _obscureConfirmPassword = !_obscureConfirmPassword;
+                                            });
+                                          },
+                                        ),
+                                      ),
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        color: textColor,
+                                      ),
+                                      validator: (value) {
+                                        if (value == null || value.isEmpty) {
+                                          return 'Please confirm your password';
+                                        }
+                                        if (value != _passwordController.text) {
+                                          return 'Passwords do not match';
+                                        }
+                                        return null;
+                                      },
                                     ),
                                   ],
                                 ),
@@ -510,5 +615,13 @@ class _RegisterPageState extends State<RegisterPage> {
         ),
       ),
     );
+  }
+  @override
+  void initState() {
+    super.initState();
+    // Set initial focus to first field
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      FocusScope.of(context).requestFocus(_fullNameFocus);
+    });
   }
 }

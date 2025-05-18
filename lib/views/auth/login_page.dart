@@ -48,7 +48,7 @@ class _LoginPageState extends State<LoginPage> {
                       Container(
                         width: double.infinity,
                         height:
-                            screenSize.height * (isSmallScreen ? 0.35 : 0.4),
+                        screenSize.height * (isSmallScreen ? 0.35 : 0.4),
                         child: Stack(
                           children: [
                             // Vegetable image
@@ -141,12 +141,12 @@ class _LoginPageState extends State<LoginPage> {
                                 decoration: InputDecoration(
                                   hintText: 'hello@graduate.utm.my',
                                   errorText:
-                                      _emailController.text.isEmpty &&
-                                              authViewModel
-                                                  .errorMessage
-                                                  .isNotEmpty
-                                          ? 'Please enter your email'
-                                          : null,
+                                  _emailController.text.isEmpty &&
+                                      authViewModel
+                                          .errorMessage
+                                          .isNotEmpty
+                                      ? 'Please enter your email'
+                                      : null,
                                 ),
                                 validator: (value) {
                                   if (value == null || value.isEmpty) {
@@ -165,6 +165,7 @@ class _LoginPageState extends State<LoginPage> {
                                   fontWeight: FontWeight.bold,
                                   color: AppTheme.textColor,
                                 ),
+
                               ),
                               TextFormField(
                                 controller: _passwordController,
@@ -172,12 +173,12 @@ class _LoginPageState extends State<LoginPage> {
                                 decoration: InputDecoration(
                                   hintText: '•••••••••',
                                   errorText:
-                                      _passwordController.text.isEmpty &&
-                                              authViewModel
-                                                  .errorMessage
-                                                  .isNotEmpty
-                                          ? 'Please enter your password'
-                                          : null,
+                                  _passwordController.text.isEmpty &&
+                                      authViewModel
+                                          .errorMessage
+                                          .isNotEmpty
+                                      ? 'Please enter your password'
+                                      : null,
                                 ),
                                 validator: (value) {
                                   if (value == null || value.isEmpty) {
@@ -192,11 +193,8 @@ class _LoginPageState extends State<LoginPage> {
                                 alignment: Alignment.centerRight,
                                 child: TextButton(
                                   onPressed: () {
-                                    // Show forgot password dialog
-                                    _showForgotPasswordDialog(
-                                      context,
-                                      authViewModel,
-                                    );
+                                    // Navigate to forgot password page instead of showing dialog
+                                    Navigator.of(context).pushNamed('/forgot-password');
                                   },
                                   child: Text(
                                     'Forgot password',
@@ -207,7 +205,6 @@ class _LoginPageState extends State<LoginPage> {
                                   ),
                                 ),
                               ),
-
                               // Error message
                               if (authViewModel.errorMessage.isNotEmpty &&
                                   _emailController.text.isNotEmpty &&
@@ -242,15 +239,15 @@ class _LoginPageState extends State<LoginPage> {
 
                                           // Attempt to sign in with Firebase
                                           UserCredential userCredential =
-                                              await FirebaseAuth.instance
-                                                  .signInWithEmailAndPassword(
-                                                    email:
-                                                        _emailController.text
-                                                            .trim(),
-                                                    password:
-                                                        _passwordController
-                                                            .text,
-                                                  );
+                                          await FirebaseAuth.instance
+                                              .signInWithEmailAndPassword(
+                                            email:
+                                            _emailController.text
+                                                .trim(),
+                                            password:
+                                            _passwordController
+                                                .text,
+                                          );
 
                                           // Hide loading spinner
                                           setState(() {
@@ -259,15 +256,15 @@ class _LoginPageState extends State<LoginPage> {
 
                                           // Check user role and navigate accordingly
                                           DocumentSnapshot userDoc =
-                                              await FirebaseFirestore.instance
-                                                  .collection('users')
-                                                  .doc(userCredential.user!.uid)
-                                                  .get();
+                                          await FirebaseFirestore.instance
+                                              .collection('users')
+                                              .doc(userCredential.user!.uid)
+                                              .get();
 
                                           if (userDoc.exists) {
                                             Map<String, dynamic> userData =
-                                                userDoc.data()
-                                                    as Map<String, dynamic>;
+                                            userDoc.data()
+                                            as Map<String, dynamic>;
                                             String userRole =
                                                 userData['role'] ?? 'buyer';
 
@@ -301,24 +298,24 @@ class _LoginPageState extends State<LoginPage> {
                                           switch (e.code) {
                                             case 'user-not-found':
                                               errorMessage =
-                                                  'No user found with this email.';
+                                              'No user found with this email.';
                                               break;
                                             case 'wrong-password':
                                               errorMessage =
-                                                  'Incorrect password.';
+                                              'Incorrect password.';
                                               break;
                                             case 'invalid-email':
                                               errorMessage =
-                                                  'Invalid email address.';
+                                              'Invalid email address.';
                                               break;
                                             case 'user-disabled':
                                               errorMessage =
-                                                  'This account has been disabled.';
+                                              'This account has been disabled.';
                                               break;
                                             default:
                                               errorMessage =
                                                   e.message ??
-                                                  'An error occurred.';
+                                                      'An error occurred.';
                                           }
 
                                           ScaffoldMessenger.of(
@@ -337,25 +334,25 @@ class _LoginPageState extends State<LoginPage> {
                                       foregroundColor: AppTheme.textColor,
                                     ),
                                     child:
-                                        authViewModel.isLoading
-                                            ? SizedBox(
-                                              width: 20,
-                                              height: 20,
-                                              child: CircularProgressIndicator(
-                                                strokeWidth: 2,
-                                                valueColor:
-                                                    AlwaysStoppedAnimation<
-                                                      Color
-                                                    >(AppTheme.primaryColor),
-                                              ),
-                                            )
-                                            : Text(
-                                              'LOGIN',
-                                              style: TextStyle(
-                                                fontSize: 16,
-                                                fontWeight: FontWeight.bold,
-                                              ),
-                                            ),
+                                    authViewModel.isLoading
+                                        ? SizedBox(
+                                      width: 20,
+                                      height: 20,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        valueColor:
+                                        AlwaysStoppedAnimation<
+                                            Color
+                                        >(AppTheme.primaryColor),
+                                      ),
+                                    )
+                                        : Text(
+                                      'LOGIN',
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
                                   ),
                                 ),
                               ),
@@ -410,9 +407,9 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   void _showForgotPasswordDialog(
-    BuildContext context,
-    AuthViewModel authViewModel,
-  ) {
+      BuildContext context,
+      AuthViewModel authViewModel,
+      ) {
     final TextEditingController resetEmailController = TextEditingController();
     final resetFormKey = GlobalKey<FormState>();
 
