@@ -3,6 +3,8 @@ import '../views/auth/login_page.dart';
 import '../views/auth/register_page.dart';
 import '../views/auth/forgotpassword_page.dart';
 import '../views/buyer/buyer_home_page.dart';
+import '../views/buyer/buyer_profile_page.dart';  // Add this import
+import '../views/buyer/edit_profile_page.dart';
 import '../views/seller/seller_home_page.dart';
 
 // Import other pages here
@@ -22,6 +24,10 @@ class RouteGenerator {
         return MaterialPageRoute(builder: (_) => ForgotPasswordPage());
       case '/buyer-home':
         return MaterialPageRoute(builder: (_) => BuyerHomePage());
+      case '/buyer-profile':  // Add this
+        return MaterialPageRoute(builder: (_) => BuyerProfilePage());
+      case '/edit-profile':   // Add this
+        return MaterialPageRoute(builder: (_) => EditProfilePage());
       case '/seller-home':
         return MaterialPageRoute(builder: (_) => SellerHomePage());
       // Add your other routes here

@@ -122,24 +122,34 @@ class _RegisterPageState extends State<RegisterPage> {
                   ),
                   child: Column(
                     children: [
-                      // Logo
-                      Container(
-                        margin: EdgeInsets.only(top: 25),
-                        width: 80,
-                        height: 80,
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          shape: BoxShape.circle,
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black12,
-                              blurRadius: 4,
-                              offset: Offset(0, 2),
+                      // Logo circle with asset image
+                      Transform.translate(
+                        offset: const Offset(0, 10),
+                        child: Container(
+                          width: 80, // Keep original circle size
+                          height: 80, // Keep original circle size
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            shape: BoxShape.circle,
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black12,
+                                blurRadius: 8,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: ClipOval(
+                            child: Transform.scale(
+                              scale: 1.5, // Scale up the logo by 50%
+                              child: Padding(
+                                padding: const EdgeInsets.all(0), // No padding
+                                child: Image.asset(
+                                  'images/logo.png',
+                                  fit: BoxFit.contain,
+                                ),
+                              ),
                             ),
-                          ],
-                          image: DecorationImage(
-                            image: AssetImage('images/yumcart_logo.jpg'),
-                            fit: BoxFit.cover,
                           ),
                         ),
                       ),

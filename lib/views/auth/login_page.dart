@@ -77,12 +77,12 @@ class _LoginPageState extends State<LoginPage> {
                         ),
                       ),
 
-                      // Logo circle
+                      // Logo circle with asset image
                       Transform.translate(
-                        offset: Offset(0, -40),
+                        offset: const Offset(0, -40),
                         child: Container(
-                          width: 80,
-                          height: 80,
+                          width: 80, // Keep original circle size
+                          height: 80, // Keep original circle size
                           decoration: BoxDecoration(
                             color: Colors.white,
                             shape: BoxShape.circle,
@@ -90,29 +90,20 @@ class _LoginPageState extends State<LoginPage> {
                               BoxShadow(
                                 color: Colors.black12,
                                 blurRadius: 8,
-                                offset: Offset(0, 2),
+                                offset: const Offset(0, 2),
                               ),
                             ],
                           ),
-                          child: Center(
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(
-                                  Icons.shopping_cart,
-                                  size: 30,
-                                  color: AppTheme.primaryColor,
+                          child: ClipOval(
+                            child: Transform.scale(
+                              scale: 1.5, // Scale up the logo by 50%
+                              child: Padding(
+                                padding: const EdgeInsets.all(0), // No padding
+                                child: Image.asset(
+                                  'images/logo.png',
+                                  fit: BoxFit.contain,
                                 ),
-                                Text(
-                                  'YumCart',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.bold,
-                                    fontFamily: 'Cursive',
-                                    color: AppTheme.primaryColor,
-                                  ),
-                                ),
-                              ],
+                              ),
                             ),
                           ),
                         ),
@@ -196,10 +187,12 @@ class _LoginPageState extends State<LoginPage> {
                                     // Navigate to forgot password page instead of showing dialog
                                     Navigator.of(context).pushNamed('/forgot-password');
                                   },
+
                                   child: Text(
                                     'Forgot password',
                                     style: TextStyle(
-                                      color: AppTheme.textColor,
+                                      color: AppTheme.accentColor,
+                                      fontWeight: FontWeight.bold,
                                       fontSize: 14,
                                     ),
                                   ),

@@ -1,13 +1,5 @@
 import 'package:flutter/material.dart';
 
-// Add main function to make the file directly runnable
-// void main() {
-//   runApp(const MaterialApp(
-//     debugShowCheckedModeBanner: false,
-//     home: BuyerHomePage(),
-//   ));
-// }
-
 class BuyerHomePage extends StatelessWidget {
   const BuyerHomePage({Key? key}) : super(key: key);
 
@@ -18,17 +10,15 @@ class BuyerHomePage extends StatelessWidget {
       body: SafeArea(
         child: Column(
           children: [
-            // Removed the status bar (time and battery indicators)
-            
             // App bar with back button, logo, and profile icons
-            _buildAppBar(),
-            
+            _buildAppBar(context),
+
             // Search bar
-            _buildSearchBar(),
-            
+            _buildSearchBar(context),
+
             // Recipe grid
             Expanded(
-              child: _buildRecipeGrid(),
+              child: _buildRecipeGrid(context),
             ),
           ],
         ),
@@ -36,9 +26,7 @@ class BuyerHomePage extends StatelessWidget {
     );
   }
 
-  // Removed the _buildStatusBar() method
-
-  Widget _buildAppBar() {
+  Widget _buildAppBar(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
       child: Row(
@@ -57,7 +45,7 @@ class BuyerHomePage extends StatelessWidget {
               size: 24,
             ),
           ),
-          
+
           // YumCart logo
           Row(
             children: [
@@ -93,7 +81,7 @@ class BuyerHomePage extends StatelessWidget {
               // ),
             ],
           ),
-          
+
           // Favorite and profile buttons
           Row(
             children: [
@@ -103,7 +91,9 @@ class BuyerHomePage extends StatelessWidget {
               ),
               IconButton(
                 icon: const Icon(Icons.person_outline),
-                onPressed: () {},
+                onPressed: () {
+                  Navigator.of(context).pushNamed('/buyer-profile');
+                },
               ),
             ],
           ),
@@ -112,7 +102,7 @@ class BuyerHomePage extends StatelessWidget {
     );
   }
 
-  Widget _buildSearchBar() {
+  Widget _buildSearchBar(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
       child: Container(
@@ -150,7 +140,7 @@ class BuyerHomePage extends StatelessWidget {
     );
   }
 
-  Widget _buildRecipeGrid() {
+  Widget _buildRecipeGrid(BuildContext context) {
     // List of recipes exactly as shown in the Figma
     final List<Map<String, String>> recipes = [
       {'name': 'Chicken Rendang', 'image': 'images/chicken_rendang.jpg'},
@@ -179,6 +169,7 @@ class BuyerHomePage extends StatelessWidget {
         itemCount: recipes.length,
         itemBuilder: (context, index) {
           return _buildRecipeCard(
+            context, // Pass context to _buildRecipeCard
             recipes[index]['name']!,
             recipes[index]['image']!,
           );
@@ -187,7 +178,7 @@ class BuyerHomePage extends StatelessWidget {
     );
   }
 
-  Widget _buildRecipeCard(String recipeName, String imagePath) {
+  Widget _buildRecipeCard(BuildContext context, String recipeName, String imagePath) {
     return ClipRRect(
       borderRadius: BorderRadius.circular(8),
       child: Stack(
@@ -206,14 +197,14 @@ class BuyerHomePage extends StatelessWidget {
               );
             },
           ),
-          
+
           // Transparent overlay
           Container(
             decoration: BoxDecoration(
               color: Colors.black.withOpacity(0.3),
             ),
           ),
-          
+
           // Recipe name text
           Center(
             child: Padding(
