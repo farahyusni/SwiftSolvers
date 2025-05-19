@@ -99,6 +99,18 @@ class AuthService {
     }
   }
 
+Future<String?> getUserRole(String uid) async {
+  try {
+    final doc = await _firestore.collection('users').doc(uid).get();
+    if (doc.exists) {
+      return doc.data()?['userType'];
+    }
+    return null;
+  } catch (e) {
+    throw Exception('Failed to get user role: $e');
+  }
+}
+
 
   // Logout user
   Future<void> logout() async {
