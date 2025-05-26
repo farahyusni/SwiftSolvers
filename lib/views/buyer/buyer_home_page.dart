@@ -1,7 +1,48 @@
 import 'package:flutter/material.dart';
+import 'package:yum_cart/services/recipe_service.dart';
 
-class BuyerHomePage extends StatelessWidget {
+class BuyerHomePage extends StatefulWidget {
   const BuyerHomePage({Key? key}) : super(key: key);
+
+  @override
+  _BuyerHomePageState createState() => _BuyerHomePageState();
+}
+
+class _BuyerHomePageState extends State<BuyerHomePage> {
+  final RecipeService _recipeService = RecipeService();
+  List<Map<String, dynamic>> _recipes = [];
+  bool _isLoading = true;
+  String _searchQuery = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadRecipes();
+  }
+
+  Future<void> _loadRecipes() async {
+    try {
+      final recipes = await _recipeService.getAllRecipes();
+      setState(() {
+        _recipes = recipes;
+        _isLoading = false;
+      });
+    } catch (e) {
+      print('Error loading recipes: $e');
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+  List<Map<String, dynamic>> get _filteredRecipes {
+    if (_searchQuery.isEmpty) {
+      return _recipes;
+    }
+    return _recipes.where((recipe) {
+      return recipe['name'].toString().toLowerCase().contains(_searchQuery.toLowerCase());
+    }).toList();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -18,7 +59,9 @@ class BuyerHomePage extends StatelessWidget {
 
             // Recipe grid
             Expanded(
-              child: _buildRecipeGrid(context),
+              child: _isLoading 
+                  ? const Center(child: CircularProgressIndicator())
+                  : _buildRecipeGrid(context),
             ),
           ],
         ),
@@ -33,16 +76,19 @@ class BuyerHomePage extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           // Back button
-          Container(
-            width: 24,
-            height: 24,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              border: Border.all(color: Colors.black, width: 1),
-            ),
-            child: const Icon(
-              Icons.chevron_left,
-              size: 24,
+          GestureDetector(
+            onTap: () => Navigator.of(context).pop(),
+            child: Container(
+              width: 24,
+              height: 24,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(color: Colors.black, width: 1),
+              ),
+              child: const Icon(
+                Icons.chevron_left,
+                size: 24,
+              ),
             ),
           ),
 
@@ -71,14 +117,6 @@ class BuyerHomePage extends StatelessWidget {
                 },
               ),
               const SizedBox(width: 4),
-              // const Text(
-              //   'YumCart',
-              //   style: TextStyle(
-              //     fontSize: 16,
-              //     fontWeight: FontWeight.bold,
-              //     color: Color(0xFFFF5B9E),
-              //   ),
-              // ),
             ],
           ),
 
@@ -116,9 +154,14 @@ class BuyerHomePage extends StatelessWidget {
             const SizedBox(width: 16),
             const Icon(Icons.menu, color: Colors.grey),
             const SizedBox(width: 8),
-            const Expanded(
+            Expanded(
               child: TextField(
-                decoration: InputDecoration(
+                onChanged: (value) {
+                  setState(() {
+                    _searchQuery = value;
+                  });
+                },
+                decoration: const InputDecoration(
                   hintText: 'Search your craving',
                   border: InputBorder.none,
                   hintStyle: TextStyle(color: Colors.grey),
@@ -131,7 +174,9 @@ class BuyerHomePage extends StatelessWidget {
               ),
               child: IconButton(
                 icon: const Icon(Icons.search, color: Colors.grey),
-                onPressed: () {},
+                onPressed: () {
+                  // Implement search functionality if needed
+                },
               ),
             ),
           ],
@@ -141,21 +186,16 @@ class BuyerHomePage extends StatelessWidget {
   }
 
   Widget _buildRecipeGrid(BuildContext context) {
-    // List of recipes exactly as shown in the Figma
-    final List<Map<String, String>> recipes = [
-      {'name': 'Chicken Rendang', 'image': 'images/chicken_rendang.jpg'},
-      {'name': 'Patin tempoyak', 'image': 'images/patin_tempoyak.jpg'},
-      {'name': 'Daging masak hitam', 'image': 'images/daging_masak_hitam.jpg'},
-      {'name': 'Smoked Duck Spaghetti', 'image': 'images/smoked_duck.jpg'},
-      {'name': 'Laksa Johor', 'image': 'images/laksa_johor.jpg'},
-      {'name': 'Spaghetti Bolognese', 'image': 'images/spaghetti_bolognese.jpg'},
-      {'name': 'Laksa Sarawak', 'image': 'images/laksa_sarawak.jpg'},
-      {'name': 'Hokkien Mee', 'image': 'images/hokkien_mee.jpg'},
-      {'name': 'Tom Yam Soup', 'image': 'images/tom_yam.jpg'},
-      {'name': 'Pan Mee', 'image': 'images/pan_mee.jpg'},
-      {'name': 'Mee curry', 'image': 'images/mee_curry.jpg'},
-      {'name': 'Ayam masak Merah', 'image': 'images/ayam_masak_merah.jpg'},
-    ];
+    final recipes = _filteredRecipes;
+
+    if (recipes.isEmpty) {
+      return const Center(
+        child: Text(
+          'No recipes found',
+          style: TextStyle(fontSize: 16, color: Colors.grey),
+        ),
+      );
+    }
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16.0),
@@ -168,59 +208,93 @@ class BuyerHomePage extends StatelessWidget {
         ),
         itemCount: recipes.length,
         itemBuilder: (context, index) {
+          final recipe = recipes[index];
           return _buildRecipeCard(
-            context, // Pass context to _buildRecipeCard
-            recipes[index]['name']!,
-            recipes[index]['image']!,
+            context,
+            recipe['name'] ?? 'Unknown Recipe',
+            recipe['imageUrl'] ?? '',
+            recipe['id'] ?? '',
+            recipe, // Pass the entire recipe object
           );
         },
       ),
     );
   }
 
-  Widget _buildRecipeCard(BuildContext context, String recipeName, String imagePath) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(8),
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          // Recipe image
-          Image.asset(
-            imagePath,
-            fit: BoxFit.cover,
-            errorBuilder: (context, error, stackTrace) {
-              return Container(
-                color: Colors.grey[300],
-                child: const Center(
-                  child: Icon(Icons.image_not_supported, color: Colors.grey),
-                ),
-              );
-            },
-          ),
+  Widget _buildRecipeCard(
+    BuildContext context, 
+    String recipeName, 
+    String imageUrl, 
+    String recipeId,
+    Map<String, dynamic> recipe,
+  ) {
+    return GestureDetector(
+      onTap: () {
+        // Navigate to recipe detail page
+        Navigator.of(context).pushNamed(
+          '/recipe-detail',
+          arguments: recipe, // Pass the entire recipe object
+        );
+      },
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(8),
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            // Recipe image
+            imageUrl.isNotEmpty
+                ? Image.network(
+                    imageUrl,
+                    fit: BoxFit.cover,
+                    loadingBuilder: (context, child, loadingProgress) {
+                      if (loadingProgress == null) return child;
+                      return Container(
+                        color: Colors.grey[300],
+                        child: const Center(
+                          child: CircularProgressIndicator(),
+                        ),
+                      );
+                    },
+                    errorBuilder: (context, error, stackTrace) {
+                      return Container(
+                        color: Colors.grey[300],
+                        child: const Center(
+                          child: Icon(Icons.image_not_supported, color: Colors.grey),
+                        ),
+                      );
+                    },
+                  )
+                : Container(
+                    color: Colors.grey[300],
+                    child: const Center(
+                      child: Icon(Icons.image_not_supported, color: Colors.grey),
+                    ),
+                  ),
 
-          // Transparent overlay
-          Container(
-            decoration: BoxDecoration(
-              color: Colors.black.withOpacity(0.3),
-            ),
-          ),
-
-          // Recipe name text
-          Center(
-            child: Padding(
-              padding: const EdgeInsets.all(4.0),
-              child: Text(
-                recipeName,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 14,
-                ),
-                textAlign: TextAlign.center,
+            // Transparent overlay
+            Container(
+              decoration: BoxDecoration(
+                color: Colors.black.withOpacity(0.3),
               ),
             ),
-          ),
-        ],
+
+            // Recipe name text
+            Center(
+              child: Padding(
+                padding: const EdgeInsets.all(4.0),
+                child: Text(
+                  recipeName,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
