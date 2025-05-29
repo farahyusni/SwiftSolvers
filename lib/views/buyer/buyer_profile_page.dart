@@ -1,7 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:firebase_auth/firebase_auth.dart' as auth; // Change this line
+import 'package:firebase_auth/firebase_auth.dart' as auth;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../viewmodels/auth_viewmodel.dart';
 import '../../utils/app_theme.dart';
@@ -29,11 +29,9 @@ class _BuyerProfilePageState extends State<BuyerProfilePage> {
     });
 
     try {
-      // Get current user - Change this line
       final auth.User? currentUser = FirebaseAuth.instance.currentUser;
 
       if (currentUser != null) {
-        // Fetch user data from Firestore
         final DocumentSnapshot doc = await FirebaseFirestore.instance
             .collection('users')
             .doc(currentUser.uid)
@@ -62,7 +60,6 @@ class _BuyerProfilePageState extends State<BuyerProfilePage> {
         title: Text('My Profile'),
         backgroundColor: AppTheme.primaryColor,
         actions: [
-          // Edit profile button
           IconButton(
             icon: Icon(Icons.edit),
             onPressed: () {
@@ -84,18 +81,46 @@ class _BuyerProfilePageState extends State<BuyerProfilePage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Profile header with avatar
+              // Updated Profile header with avatar
               Center(
                 child: Column(
                   children: [
-                    CircleAvatar(
-                      radius: 60,
-                      backgroundColor: AppTheme.lightPinkColor,
-                      child: Icon(
-                        Icons.person,
-                        size: 80,
-                        color: AppTheme.primaryColor,
-                      ),
+                    // Profile Image with fallback
+                    Stack(
+                      children: [
+                        CircleAvatar(
+                          radius: 60,
+                          backgroundColor: AppTheme.lightPinkColor,
+                          backgroundImage: _userData!['profileImageUrl'] != null
+                              ? NetworkImage(_userData!['profileImageUrl']!)
+                              : null,
+                          child: _userData!['profileImageUrl'] == null
+                              ? Icon(
+                            Icons.person,
+                            size: 80,
+                            color: AppTheme.primaryColor,
+                          )
+                              : null,
+                        ),
+                        // Optional: Add edit icon overlay
+                        Positioned(
+                          bottom: 0,
+                          right: 0,
+                          child: Container(
+                            padding: EdgeInsets.all(4),
+                            decoration: BoxDecoration(
+                              color: AppTheme.primaryColor,
+                              shape: BoxShape.circle,
+                              border: Border.all(color: Colors.white, width: 2),
+                            ),
+                            child: Icon(
+                              Icons.camera_alt,
+                              size: 16,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                     SizedBox(height: 16),
                     Text(
@@ -141,9 +166,12 @@ class _BuyerProfilePageState extends State<BuyerProfilePage> {
                       ),
                     ),
                     onPressed: () async {
-                      // Sign out
-                      await Provider.of<AuthViewModel>(context, listen: false).logout();
-                      Navigator.of(context).pushReplacementNamed('/login');
+                      // Show confirmation dialog
+                      final shouldLogout = await _showLogoutConfirmation();
+                      if (shouldLogout == true) {
+                        await Provider.of<AuthViewModel>(context, listen: false).logout();
+                        Navigator.of(context).pushReplacementNamed('/login');
+                      }
                     },
                   ),
                 ),
@@ -152,6 +180,32 @@ class _BuyerProfilePageState extends State<BuyerProfilePage> {
           ),
         ),
       ),
+    );
+  }
+
+  // Add logout confirmation dialog
+  Future<bool?> _showLogoutConfirmation() {
+    return showDialog<bool>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Sign Out'),
+          content: Text('Are you sure you want to sign out?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.primaryColor,
+              ),
+              child: Text('Sign Out'),
+            ),
+          ],
+        );
+      },
     );
   }
 
