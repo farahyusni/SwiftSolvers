@@ -59,7 +59,7 @@ class _BuyerHomePageState extends State<BuyerHomePage> {
 
             // Recipe grid
             Expanded(
-              child: _isLoading 
+              child: _isLoading
                   ? const Center(child: CircularProgressIndicator())
                   : _buildRecipeGrid(context),
             ),
@@ -123,15 +123,24 @@ class _BuyerHomePageState extends State<BuyerHomePage> {
           // Favorite and profile buttons
           Row(
             children: [
+              // Updated favorites button - now functional!
               IconButton(
-                icon: const Icon(Icons.favorite_border),
-                onPressed: () {},
+                icon: const Icon(
+                  Icons.bookmark_border, // Changed to bookmark icon for consistency
+                  color: Color(0xFFFF5B9E), // Added your app's primary color
+                ),
+                onPressed: () {
+                  // Navigate to favorites page
+                  Navigator.of(context).pushNamed('/favorites');
+                },
+                tooltip: 'My Favorites', // Added tooltip for better UX
               ),
               IconButton(
                 icon: const Icon(Icons.person_outline),
                 onPressed: () {
                   Navigator.of(context).pushNamed('/buyer-profile');
                 },
+                tooltip: 'Profile', // Added tooltip for consistency
               ),
             ],
           ),
@@ -222,12 +231,12 @@ class _BuyerHomePageState extends State<BuyerHomePage> {
   }
 
   Widget _buildRecipeCard(
-    BuildContext context, 
-    String recipeName, 
-    String imageUrl, 
-    String recipeId,
-    Map<String, dynamic> recipe,
-  ) {
+      BuildContext context,
+      String recipeName,
+      String imageUrl,
+      String recipeId,
+      Map<String, dynamic> recipe,
+      ) {
     return GestureDetector(
       onTap: () {
         // Navigate to recipe detail page
@@ -244,32 +253,32 @@ class _BuyerHomePageState extends State<BuyerHomePage> {
             // Recipe image
             imageUrl.isNotEmpty
                 ? Image.network(
-                    imageUrl,
-                    fit: BoxFit.cover,
-                    loadingBuilder: (context, child, loadingProgress) {
-                      if (loadingProgress == null) return child;
-                      return Container(
-                        color: Colors.grey[300],
-                        child: const Center(
-                          child: CircularProgressIndicator(),
-                        ),
-                      );
-                    },
-                    errorBuilder: (context, error, stackTrace) {
-                      return Container(
-                        color: Colors.grey[300],
-                        child: const Center(
-                          child: Icon(Icons.image_not_supported, color: Colors.grey),
-                        ),
-                      );
-                    },
-                  )
-                : Container(
-                    color: Colors.grey[300],
-                    child: const Center(
-                      child: Icon(Icons.image_not_supported, color: Colors.grey),
-                    ),
+              imageUrl,
+              fit: BoxFit.cover,
+              loadingBuilder: (context, child, loadingProgress) {
+                if (loadingProgress == null) return child;
+                return Container(
+                  color: Colors.grey[300],
+                  child: const Center(
+                    child: CircularProgressIndicator(),
                   ),
+                );
+              },
+              errorBuilder: (context, error, stackTrace) {
+                return Container(
+                  color: Colors.grey[300],
+                  child: const Center(
+                    child: Icon(Icons.image_not_supported, color: Colors.grey),
+                  ),
+                );
+              },
+            )
+                : Container(
+              color: Colors.grey[300],
+              child: const Center(
+                child: Icon(Icons.image_not_supported, color: Colors.grey),
+              ),
+            ),
 
             // Transparent overlay
             Container(

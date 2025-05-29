@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../services/favourites_services.dart';
 
 class RecipeDetailPage extends StatefulWidget {
   final Map<String, dynamic> recipe;
@@ -11,15 +12,104 @@ class RecipeDetailPage extends StatefulWidget {
 
 class _RecipeDetailPageState extends State<RecipeDetailPage> {
   List<bool> _checkedIngredients = [];
+  final FavoritesService _favoritesService = FavoritesService();
+  bool _isFavorite = false;
+  bool _isLoading = false;
 
   @override
   void initState() {
     super.initState();
+    print('🚀 RecipeDetailPage initState started');
+
     // Initialize all ingredients as unchecked
     final ingredients = widget.recipe['ingredients'] as List<dynamic>? ?? [];
     _checkedIngredients = List.filled(ingredients.length, false);
+
+    // Debug: Print the entire recipe data
+    print('📦 Recipe data keys: ${widget.recipe.keys.toList()}');
+    print('📦 Recipe name: ${widget.recipe['name']}');
+    print('📦 Recipe id: ${widget.recipe['id']}');
+
+    // Check if recipe is already in favorites
+    _checkFavoriteStatus();
   }
 
+  Future<void> _checkFavoriteStatus() async {
+    print('🔍 _checkFavoriteStatus called');
+
+    final recipeId = widget.recipe['id']?.toString() ?? '';
+
+    print('🔍 Recipe data received: ${widget.recipe.keys.toList()}');
+    print('🔍 Recipe ID from data: $recipeId');
+    print('🔍 Current user ID: ${_favoritesService.currentUserId}');
+
+    if (recipeId.isNotEmpty) {
+      print('🔍 Calling isFavorite with ID: $recipeId');
+      final isFav = await _favoritesService.isFavorite(recipeId);
+      print('🔍 isFavorite returned: $isFav');
+
+      if (mounted) {
+        setState(() {
+          _isFavorite = isFav;
+        });
+        print('📝 Favorite status set to: $_isFavorite');
+      }
+    } else {
+      print('❌ No recipe ID found in recipe data');
+      print('❌ Full recipe data: $widget.recipe');
+    }
+  }
+
+  Future<void> _toggleFavorite() async {
+    print('🔄 _toggleFavorite called');
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    // Store the current state before toggling
+    final wasAlreadyFavorite = _isFavorite;
+    print('🔄 Current favorite status: $wasAlreadyFavorite');
+
+    final success = await _favoritesService.toggleFavorite(widget.recipe);
+    print('🔄 toggleFavorite returned: $success');
+
+    if (mounted) {
+      setState(() {
+        _isLoading = false;
+        if (success) {
+          _isFavorite = !_isFavorite;
+        }
+      });
+
+      // Show feedback to user based on the action that was performed
+      if (success) {
+        final message = wasAlreadyFavorite
+            ? 'Recipe removed from favorites!'
+            : 'Recipe saved to favorites!';
+
+        print('✅ Showing message: $message');
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(message),
+            backgroundColor: const Color(0xFFFF5B9E),
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      } else {
+        print('❌ Toggle failed, showing error message');
+        // Show error message if the operation failed
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Failed to update favorites. Please try again.'),
+            backgroundColor: Colors.red,
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+    }
+  }
   @override
   Widget build(BuildContext context) {
     final recipe = widget.recipe;
@@ -33,7 +123,7 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
           children: [
             // Header with recipe image and title
             _buildHeader(context, recipe),
-            
+
             // Scrollable content
             Expanded(
               child: SingleChildScrollView(
@@ -42,10 +132,10 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
                   children: [
                     // Ingredients section
                     _buildIngredientsSection(ingredients),
-                    
+
                     // Add to cart button
                     _buildAddToCartButton(context),
-                    
+
                     // Instructions section
                     _buildInstructionsSection(instructions),
                   ],
@@ -70,25 +160,25 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
             decoration: BoxDecoration(
               image: recipe['imageUrl'] != null && recipe['imageUrl'].isNotEmpty
                   ? DecorationImage(
-                      image: NetworkImage(recipe['imageUrl']),
-                      fit: BoxFit.cover,
-                    )
+                image: NetworkImage(recipe['imageUrl']),
+                fit: BoxFit.cover,
+              )
                   : null,
-              color: recipe['imageUrl'] == null || recipe['imageUrl'].isEmpty 
-                  ? Colors.grey[300] 
+              color: recipe['imageUrl'] == null || recipe['imageUrl'].isEmpty
+                  ? Colors.grey[300]
                   : null,
             ),
             child: recipe['imageUrl'] == null || recipe['imageUrl'].isEmpty
                 ? const Center(
-                    child: Icon(
-                      Icons.image_not_supported,
-                      size: 50,
-                      color: Colors.grey,
-                    ),
-                  )
+              child: Icon(
+                Icons.image_not_supported,
+                size: 50,
+                color: Colors.grey,
+              ),
+            )
                 : null,
           ),
-          
+
           // Dark overlay
           Container(
             height: 300,
@@ -103,7 +193,7 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
               ),
             ),
           ),
-          
+
           // Top row with back button and profile icon
           Positioned(
             top: 16,
@@ -149,7 +239,7 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
               ],
             ),
           ),
-          
+
           // Recipe title and save button
           Positioned(
             bottom: 40,
@@ -168,25 +258,52 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 16),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.9),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(Icons.bookmark_border, size: 16),
-                      const SizedBox(width: 8),
-                      const Text(
-                        'Save',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
+                GestureDetector(
+                  onTap: _isLoading ? null : () {
+                    print('💾 Save button tapped!');
+                    print('💾 Current loading state: $_isLoading');
+                    print('💾 Current favorite state: $_isFavorite');
+                    _toggleFavorite();
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: _isFavorite
+                          ? const Color(0xFFFF5B9E).withOpacity(0.9)
+                          : Colors.white.withOpacity(0.9),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (_isLoading)
+                          SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                _isFavorite ? Colors.white : const Color(0xFFFF5B9E),
+                              ),
+                            ),
+                          )
+                        else
+                          Icon(
+                            _isFavorite ? Icons.bookmark : Icons.bookmark_border,
+                            size: 16,
+                            color: _isFavorite ? Colors.white : Colors.black,
+                          ),
+                        const SizedBox(width: 8),
+                        Text(
+                          _isFavorite ? 'Saved' : 'Save',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
+                            color: _isFavorite ? Colors.white : Colors.black,
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               ],
@@ -217,7 +334,7 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
             final name = ingredient['name'] ?? '';
             final amount = ingredient['amount'] ?? '';
             final unit = ingredient['unit'] ?? '';
-            
+
             return Padding(
               padding: const EdgeInsets.symmetric(vertical: 4),
               child: Row(
@@ -234,21 +351,21 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
                         border: Border.all(
-                          color: _checkedIngredients[index] 
-                              ? const Color(0xFFFF5B9E) 
+                          color: _checkedIngredients[index]
+                              ? const Color(0xFFFF5B9E)
                               : Colors.grey,
                           width: 2,
                         ),
-                        color: _checkedIngredients[index] 
-                            ? const Color(0xFFFF5B9E) 
+                        color: _checkedIngredients[index]
+                            ? const Color(0xFFFF5B9E)
                             : Colors.transparent,
                       ),
                       child: _checkedIngredients[index]
                           ? const Icon(
-                              Icons.check,
-                              color: Colors.white,
-                              size: 16,
-                            )
+                        Icons.check,
+                        color: Colors.white,
+                        size: 16,
+                      )
                           : null,
                     ),
                   ),
@@ -258,11 +375,11 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
                       '$amount${unit.isNotEmpty ? ' $unit' : ''} $name',
                       style: TextStyle(
                         fontSize: 16,
-                        decoration: _checkedIngredients[index] 
-                            ? TextDecoration.lineThrough 
+                        decoration: _checkedIngredients[index]
+                            ? TextDecoration.lineThrough
                             : null,
-                        color: _checkedIngredients[index] 
-                            ? Colors.grey 
+                        color: _checkedIngredients[index]
+                            ? Colors.grey
                             : Colors.black,
                       ),
                     ),
@@ -333,7 +450,7 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
           ...instructions.map((instruction) {
             final step = instruction['step'] ?? 0;
             final text = instruction['instruction'] ?? '';
-            
+
             return Padding(
               padding: const EdgeInsets.only(bottom: 12),
               child: Row(
