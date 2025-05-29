@@ -8,7 +8,7 @@ class SellerHomePage extends StatefulWidget {
 }
 
 class _SellerHomePageState extends State<SellerHomePage> {
-  int _selectedBottomNavIndex = 0;
+  int _selectedBottomNavIndex = 3; // Highlight "Recipe" tab by default
 
   @override
   Widget build(BuildContext context) {
@@ -17,8 +17,7 @@ class _SellerHomePageState extends State<SellerHomePage> {
       body: SafeArea(
         child: Column(
           children: [
-            // Status bar with time and icons
-            _buildStatusBar(),
+            // Removed: _buildStatusBar(),
 
             // App bar with back button, logo, and profile icons
             _buildAppBar(context),
@@ -26,89 +25,20 @@ class _SellerHomePageState extends State<SellerHomePage> {
             // Search bar
             _buildSearchBar(),
 
-            // Food items (only 3 items in first row, then empty space)
+            // Food items (only 3 items in first row)
             _buildFoodGrid(),
 
-            // Spacer to push navigation to bottom
-            const Spacer(),
+            const Spacer(), // Push content upward
           ],
         ),
       ),
-      
+
       // Bottom Navigation Bar
       bottomNavigationBar: _buildBottomNavigationBar(),
-      
+
       // Floating Action Button above Recipe icon
       floatingActionButton: _buildFloatingActionButton(),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
-    );
-  }
-
-  Widget _buildStatusBar() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 8.0),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          const Text(
-            '17:03',
-            style: TextStyle(
-              fontSize: 17,
-              fontWeight: FontWeight.w600,
-              color: Colors.black,
-            ),
-          ),
-          Row(
-            children: [
-              Row(
-                children: List.generate(4, (index) => Container(
-                  margin: const EdgeInsets.only(right: 2),
-                  width: 3,
-                  height: 10 + (index * 2),
-                  decoration: BoxDecoration(
-                    color: Colors.black,
-                    borderRadius: BorderRadius.circular(1),
-                  ),
-                )),
-              ),
-              const SizedBox(width: 6),
-              const Icon(Icons.wifi, size: 20, color: Colors.black),
-              const SizedBox(width: 6),
-              Container(
-                width: 26,
-                height: 14,
-                decoration: BoxDecoration(
-                  border: Border.all(color: Colors.black, width: 1.5),
-                  borderRadius: BorderRadius.circular(3),
-                ),
-                child: Stack(
-                  children: [
-                    Container(
-                      margin: const EdgeInsets.all(2),
-                      decoration: BoxDecoration(
-                        color: Colors.green,
-                        borderRadius: BorderRadius.circular(1),
-                      ),
-                    ),
-                    Positioned(
-                      right: -3,
-                      top: 4,
-                      child: Container(
-                        width: 3,
-                        height: 6,
-                        decoration: BoxDecoration(
-                          color: Colors.black,
-                          borderRadius: BorderRadius.circular(1),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
     );
   }
 
@@ -172,7 +102,6 @@ class _SellerHomePageState extends State<SellerHomePage> {
                 color: Colors.black,
               ),
               onPressed: () {
-                // Navigate to Seller Profile Page
                 Navigator.of(context).pushNamed('/seller-profile');
               },
             ),
@@ -181,7 +110,6 @@ class _SellerHomePageState extends State<SellerHomePage> {
       ),
     );
   }
-
 
   Widget _buildSearchBar() {
     return Padding(
@@ -215,7 +143,6 @@ class _SellerHomePageState extends State<SellerHomePage> {
   }
 
   Widget _buildFoodGrid() {
-    // Only 3 food items in the first row, then empty space
     final List<String> foodItems = [
       'Malaysian Fried Rice',
       'Hokkien Mee',
@@ -226,7 +153,6 @@ class _SellerHomePageState extends State<SellerHomePage> {
       padding: const EdgeInsets.all(20.0),
       child: Column(
         children: [
-          // First row with 3 food items
           Row(
             children: foodItems.map((item) => Expanded(
               child: Container(
@@ -326,9 +252,8 @@ class _SellerHomePageState extends State<SellerHomePage> {
     return Stack(
       clipBehavior: Clip.none,
       children: [
-        // Your Bottom Navigation Bar
         Positioned(
-          bottom: 10, // Adjust as needed
+          bottom: 10,
           left: MediaQuery.of(context).size.width / 2 - 35,
           child: Container(
             width: 70,
