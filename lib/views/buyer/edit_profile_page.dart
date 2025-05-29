@@ -1,7 +1,10 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:image_picker/image_picker.dart';
 import '../../utils/app_theme.dart';
+import '../../services/supabase_service.dart'; // Fixed import path
 
 class EditProfilePage extends StatefulWidget {
   const EditProfilePage({Key? key}) : super(key: key);
@@ -18,9 +21,15 @@ class _EditProfilePageState extends State<EditProfilePage> {
   final TextEditingController _phoneController = TextEditingController();
   final TextEditingController _addressController = TextEditingController();
 
+  // Move these variables INSIDE the class
+  final SupabaseService _supabaseService = SupabaseService();
+  final ImagePicker _imagePicker = ImagePicker();
+
   bool _isLoading = true;
   bool _isSaving = false;
+  bool _isUploadingImage = false; // Add this
   String? _userId;
+  String? _currentProfileImageUrl; // Add this
 
   @override
   void initState() {
@@ -34,6 +43,102 @@ class _EditProfilePageState extends State<EditProfilePage> {
     _phoneController.dispose();
     _addressController.dispose();
     super.dispose();
+  }
+
+  // Add this method for image upload
+  Future<void> _uploadProfileImage(ImageSource source) async {
+    setState(() {
+      _isUploadingImage = true;
+    });
+
+    try {
+      // Pick image
+      final XFile? image = await _imagePicker.pickImage(
+        source: source,
+        maxWidth: 800,
+        maxHeight: 800,
+        imageQuality: 80,
+      );
+
+      if (image != null) {
+        final imageFile = File(image.path);
+
+        // Upload to Supabase
+        final imageUrl = await _supabaseService.uploadProfileImage(imageFile);
+
+        // Update Firestore with new image URL
+        if (_userId != null) {
+          await FirebaseFirestore.instance
+              .collection('users')
+              .doc(_userId)
+              .update({
+            'profileImageUrl': imageUrl,
+            'updatedAt': FieldValue.serverTimestamp(),
+          });
+
+          setState(() {
+            _currentProfileImageUrl = imageUrl;
+          });
+
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Profile image updated successfully'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error uploading image: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } finally {
+      setState(() {
+        _isUploadingImage = false;
+      });
+    }
+  }
+
+  // Add this method for image source selection
+  void _showImageSourceDialog() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Select Image Source'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: Icon(Icons.photo_library),
+                title: Text('Gallery'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _uploadProfileImage(ImageSource.gallery);
+                },
+              ),
+              ListTile(
+                leading: Icon(Icons.camera_alt),
+                title: Text('Camera'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _uploadProfileImage(ImageSource.camera);
+                },
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text('Cancel'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   void _showChangePasswordDialog() {
@@ -84,7 +189,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
                   if (value.length < 8) {
                     return 'Password must be at least 8 characters';
                   }
-                  // Add more validation as needed
                   return null;
                 },
               ),
@@ -121,29 +225,22 @@ class _EditProfilePageState extends State<EditProfilePage> {
               if (passwordFormKey.currentState!.validate()) {
                 Navigator.pop(context);
 
-                // Show loading
                 setState(() {
                   _isSaving = true;
                 });
 
                 try {
-                  // Get current user
                   final user = FirebaseAuth.instance.currentUser;
 
                   if (user != null) {
-                    // Create credentials with the current password
                     final credential = EmailAuthProvider.credential(
                       email: user.email!,
                       password: currentPasswordController.text,
                     );
 
-                    // Reauthenticate user
                     await user.reauthenticateWithCredential(credential);
-
-                    // Update password
                     await user.updatePassword(newPasswordController.text);
 
-                    // Show success message
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
                         content: Text('Password updated successfully'),
@@ -152,7 +249,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
                     );
                   }
                 } catch (e) {
-                  // Show error message
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
                       content: Text('Error updating password: $e'),
@@ -172,19 +268,18 @@ class _EditProfilePageState extends State<EditProfilePage> {
       ),
     );
   }
+
   Future<void> _loadUserData() async {
     setState(() {
       _isLoading = true;
     });
 
     try {
-      // Get current user
       final User? currentUser = FirebaseAuth.instance.currentUser;
 
       if (currentUser != null) {
         _userId = currentUser.uid;
 
-        // Fetch user data from Firestore
         final DocumentSnapshot doc = await FirebaseFirestore.instance
             .collection('users')
             .doc(currentUser.uid)
@@ -193,10 +288,10 @@ class _EditProfilePageState extends State<EditProfilePage> {
         if (doc.exists) {
           final userData = doc.data() as Map<String, dynamic>;
 
-          // Set controller values
           _fullNameController.text = userData['fullName'] ?? '';
           _phoneController.text = userData['phone'] ?? '';
           _addressController.text = userData['address'] ?? '';
+          _currentProfileImageUrl = userData['profileImageUrl']; // Add this line
         }
       }
     } catch (e) {
@@ -219,7 +314,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
     try {
       if (_userId != null) {
-        // Update Firestore document
         await FirebaseFirestore.instance.collection('users').doc(_userId).update({
           'fullName': _fullNameController.text.trim(),
           'phone': _phoneController.text.trim(),
@@ -227,10 +321,8 @@ class _EditProfilePageState extends State<EditProfilePage> {
           'updatedAt': FieldValue.serverTimestamp(),
         });
 
-        // Update display name in Firebase Auth
         await FirebaseAuth.instance.currentUser?.updateDisplayName(_fullNameController.text.trim());
 
-        // Show success message
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Profile updated successfully'),
@@ -238,11 +330,9 @@ class _EditProfilePageState extends State<EditProfilePage> {
           ),
         );
 
-        // Go back to profile page
         Navigator.of(context).pop();
       }
     } catch (e) {
-      // Show error message
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Error updating profile: $e'),
@@ -273,31 +363,47 @@ class _EditProfilePageState extends State<EditProfilePage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Profile photo section (can be enhanced with image upload)
+                // Updated Profile photo section
                 Center(
                   child: Column(
                     children: [
-                      CircleAvatar(
-                        radius: 60,
-                        backgroundColor: AppTheme.lightPinkColor,
-                        child: Icon(
-                          Icons.person,
-                          size: 80,
-                          color: AppTheme.primaryColor,
-                        ),
+                      Stack(
+                        children: [
+                          CircleAvatar(
+                            radius: 60,
+                            backgroundColor: AppTheme.lightPinkColor,
+                            backgroundImage: _currentProfileImageUrl != null
+                                ? NetworkImage(_currentProfileImageUrl!)
+                                : null,
+                            child: _currentProfileImageUrl == null
+                                ? Icon(
+                              Icons.person,
+                              size: 80,
+                              color: AppTheme.primaryColor,
+                            )
+                                : null,
+                          ),
+                          if (_isUploadingImage)
+                            Positioned.fill(
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  color: Colors.black.withOpacity(0.5),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Center(
+                                  child: CircularProgressIndicator(
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ),
+                            ),
+                        ],
                       ),
                       SizedBox(height: 8),
                       TextButton.icon(
                         icon: Icon(Icons.camera_alt),
                         label: Text('Change Photo'),
-                        onPressed: () {
-                          // Photo upload functionality would go here
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text('Photo upload not implemented yet'),
-                            ),
-                          );
-                        },
+                        onPressed: _isUploadingImage ? null : _showImageSourceDialog,
                       ),
                     ],
                   ),
@@ -370,7 +476,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
                 SizedBox(height: 4),
                 TextFormField(
                   controller: _addressController,
-                  //maxLines: 3,
                   decoration: InputDecoration(
                     border: UnderlineInputBorder(),
                     hintText: 'Enter your address',
@@ -384,7 +489,8 @@ class _EditProfilePageState extends State<EditProfilePage> {
                 ),
 
                 SizedBox(height: 32),
-// Change Password Button
+
+                // Change Password Button
                 SizedBox(height: 24),
                 Center(
                   child: SizedBox(
