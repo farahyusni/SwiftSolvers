@@ -90,7 +90,7 @@ class _RegisterPageState extends State<RegisterPage> {
   Widget build(BuildContext context) {
     // Colors
     final primaryColor = Color(0xFFD8789E);
-    final lightPinkColor = Color(0xFFFCE4EC);
+   final lightPinkColor = _userType == 'seller' ? Color(0xFFE0F7FA) : Color(0xFFFCE4EC);
     final textColor = Colors.black87;
 
     // Get screen size for responsive design

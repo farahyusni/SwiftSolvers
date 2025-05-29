@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../viewmodels/auth_viewmodel.dart';
 import '../../utils/app_theme.dart';
+import '../../services/navigation_service.dart';
 
 class LoginPage extends StatefulWidget {
   @override
@@ -216,72 +217,56 @@ class _LoginPageState extends State<LoginPage> {
 
                               SizedBox(height: isSmallScreen ? 15 : 25),
 
-                              // Login button
+                              // Login button - FIXED VERSION
                               Center(
                                 child: SizedBox(
                                   width: 180,
                                   height: 45,
                                   child: ElevatedButton(
-                                    onPressed: () async {
+                                    onPressed: _isLoading ? null : () async {
                                       if (_formKey.currentState!.validate()) {
-                                        try {
-                                          // Show loading spinner
-                                          setState(() {
-                                            _isLoading = true;
-                                          });
+                                        setState(() {
+                                          _isLoading = true;
+                                        });
 
-                                          // Attempt to sign in with Firebase
+                                        try {
+                                          // Sign in with Firebase
                                           UserCredential userCredential =
                                           await FirebaseAuth.instance
                                               .signInWithEmailAndPassword(
-                                            email:
-                                            _emailController.text
-                                                .trim(),
-                                            password:
-                                            _passwordController
-                                                .text,
+                                            email: _emailController.text.trim(),
+                                            password: _passwordController.text,
                                           );
 
-                                          // Hide loading spinner
-                                          setState(() {
-                                            _isLoading = false;
-                                          });
-
-                                          // Check user role and navigate accordingly
+                                          // Get user data from Firestore
                                           DocumentSnapshot userDoc =
                                           await FirebaseFirestore.instance
                                               .collection('users')
                                               .doc(userCredential.user!.uid)
                                               .get();
 
+                                          setState(() {
+                                            _isLoading = false;
+                                          });
+
                                           if (userDoc.exists) {
                                             Map<String, dynamic> userData =
-                                            userDoc.data()
-                                            as Map<String, dynamic>;
-                                            String userRole =
-                                                userData['role'] ?? 'buyer';
+                                            userDoc.data() as Map<String, dynamic>;
+                                            
+                                            // FIXED: Check for 'userType' instead of 'role'
+                                            String userType = userData['userType'] ?? 'buyer';
 
-                                            // Navigate based on role
-                                            if (userRole == 'buyer') {
-                                              Navigator.pushReplacementNamed(
-                                                context,
-                                                '/buyer-home',
-                                              );
-                                            } else if (userRole == 'seller') {
-                                              Navigator.pushReplacementNamed(
-                                                context,
-                                                '/seller-home',
-                                              );
+                                            // Navigate based on user type
+                                            if (userType == 'seller') {
+                                              NavigationService.navigateToReplacement('/seller-home');
+                                            } else {
+                                              NavigationService.navigateToReplacement('/buyer-home');
                                             }
                                           } else {
-                                            // If no role is found, default to buyer
-                                            Navigator.pushReplacementNamed(
-                                              context,
-                                              '/buyer-home',
-                                            );
+                                            // If no user data found, default to buyer
+                                            NavigationService.navigateToReplacement('/buyer-home');
                                           }
                                         } on FirebaseAuthException catch (e) {
-                                          // Hide loading spinner
                                           setState(() {
                                             _isLoading = false;
                                           });
@@ -290,32 +275,35 @@ class _LoginPageState extends State<LoginPage> {
                                           String errorMessage;
                                           switch (e.code) {
                                             case 'user-not-found':
-                                              errorMessage =
-                                              'No user found with this email.';
+                                              errorMessage = 'No user found with this email.';
                                               break;
                                             case 'wrong-password':
-                                              errorMessage =
-                                              'Incorrect password.';
+                                              errorMessage = 'Incorrect password.';
                                               break;
                                             case 'invalid-email':
-                                              errorMessage =
-                                              'Invalid email address.';
+                                              errorMessage = 'Invalid email address.';
                                               break;
                                             case 'user-disabled':
-                                              errorMessage =
-                                              'This account has been disabled.';
+                                              errorMessage = 'This account has been disabled.';
                                               break;
                                             default:
-                                              errorMessage =
-                                                  e.message ??
-                                                      'An error occurred.';
+                                              errorMessage = e.message ?? 'An error occurred.';
                                           }
 
-                                          ScaffoldMessenger.of(
-                                            context,
-                                          ).showSnackBar(
+                                          ScaffoldMessenger.of(context).showSnackBar(
                                             SnackBar(
                                               content: Text(errorMessage),
+                                              backgroundColor: Colors.red,
+                                            ),
+                                          );
+                                        } catch (e) {
+                                          setState(() {
+                                            _isLoading = false;
+                                          });
+                                          
+                                          ScaffoldMessenger.of(context).showSnackBar(
+                                            SnackBar(
+                                              content: Text('An error occurred: $e'),
                                               backgroundColor: Colors.red,
                                             ),
                                           );
@@ -326,17 +314,14 @@ class _LoginPageState extends State<LoginPage> {
                                       backgroundColor: Colors.white,
                                       foregroundColor: AppTheme.textColor,
                                     ),
-                                    child:
-                                    authViewModel.isLoading
+                                    child: _isLoading
                                         ? SizedBox(
                                       width: 20,
                                       height: 20,
                                       child: CircularProgressIndicator(
                                         strokeWidth: 2,
-                                        valueColor:
-                                        AlwaysStoppedAnimation<
-                                            Color
-                                        >(AppTheme.primaryColor),
+                                        valueColor: AlwaysStoppedAnimation<Color>(
+                                            AppTheme.primaryColor),
                                       ),
                                     )
                                         : Text(

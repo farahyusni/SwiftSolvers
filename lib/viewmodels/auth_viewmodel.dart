@@ -30,43 +30,43 @@ class AuthViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
-  // Login user
-  Future<bool> login(String email, String password) async {
+  // Login user - Modified to return user type
+  Future<String?> login(String email, String password) async {
     _isLoading = true;
     _errorMessage = '';
     notifyListeners();
     
     try {
       _currentUser = await _authService.login(email, password);
+      
+      // Get user type from Firestore
+      final userType = await _authService.getUserRole(_currentUser!.id);
+      
       _isLoading = false;
       notifyListeners();
-      return true;
+      return userType; // Return the user type instead of just true/false
     } catch (e) {
       _isLoading = false;
       _errorMessage = e.toString();
       notifyListeners();
-      return false;
+      return null; // Return null on error
+    }
+  }
+
+  // Alternative method if you prefer to keep the original login method
+  Future<String?> getCurrentUserType() async {
+    if (_currentUser == null) return null;
+    
+    try {
+      return await _authService.getUserRole(_currentUser!.id);
+    } catch (e) {
+      _errorMessage = e.toString();
+      notifyListeners();
+      return null;
     }
   }
 
   // Register user
-  // Future<bool> register(String email, String password, String? displayName) async {
-  //   _isLoading = true;
-  //   _errorMessage = '';
-  //   notifyListeners();
-  //
-  //   try {
-  //     _currentUser = await _authService.register(email, password, displayName);
-  //     _isLoading = false;
-  //     notifyListeners();
-  //     return true;
-  //   } catch (e) {
-  //     _isLoading = false;
-  //     _errorMessage = e.toString();
-  //     notifyListeners();
-  //     return false;
-  //   }
-  // }
   Future<bool> register({
     required String email,
     required String password,
@@ -106,7 +106,7 @@ class AuthViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
-// Reset password
+  // Reset password
   Future<bool> resetPassword(String email) async {
     _isLoading = true;
     _errorMessage = '';
