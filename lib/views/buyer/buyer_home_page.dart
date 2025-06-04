@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:yum_cart/services/recipe_service.dart';
+import 'package:yum_cart/views/buyer/widgets/categories_bottom_sheet.dart';
 
 class BuyerHomePage extends StatefulWidget {
   const BuyerHomePage({Key? key}) : super(key: key);
@@ -11,8 +12,10 @@ class BuyerHomePage extends StatefulWidget {
 class _BuyerHomePageState extends State<BuyerHomePage> {
   final RecipeService _recipeService = RecipeService();
   List<Map<String, dynamic>> _recipes = [];
+  List<Map<String, dynamic>> _allRecipes = []; // Store all recipes
   bool _isLoading = true;
   String _searchQuery = '';
+  String? _selectedCategory; // Track selected category
 
   @override
   void initState() {
@@ -24,12 +27,44 @@ class _BuyerHomePageState extends State<BuyerHomePage> {
     try {
       final recipes = await _recipeService.getAllRecipes();
       setState(() {
+        _allRecipes = recipes;
         _recipes = recipes;
         _isLoading = false;
       });
     } catch (e) {
       print('Error loading recipes: $e');
       setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+  // Filter recipes by category
+  Future<void> _filterByCategory(String? category) async {
+    setState(() {
+      _isLoading = true;
+      _selectedCategory = category;
+    });
+
+    try {
+      List<Map<String, dynamic>> filteredRecipes;
+      
+      if (category == null) {
+        // Show all recipes
+        filteredRecipes = _allRecipes;
+      } else {
+        // Filter by category
+        filteredRecipes = await _recipeService.getRecipesByCategory(category);
+      }
+
+      setState(() {
+        _recipes = filteredRecipes;
+        _isLoading = false;
+      });
+    } catch (e) {
+      print('Error filtering recipes: $e');
+      setState(() {
+        _recipes = _allRecipes; // Fallback to all recipes
         _isLoading = false;
       });
     }
@@ -44,6 +79,20 @@ class _BuyerHomePageState extends State<BuyerHomePage> {
     }).toList();
   }
 
+  void _showCategoriesBottomSheet() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => CategoriesBottomSheet(
+        selectedCategoryId: _selectedCategory,
+        onCategorySelected: (category) {
+          _filterByCategory(category);
+        },
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -54,8 +103,11 @@ class _BuyerHomePageState extends State<BuyerHomePage> {
             // App bar with back button, logo, and profile icons
             _buildAppBar(context),
 
-            // Search bar
+            // Search bar with category indicator
             _buildSearchBar(context),
+
+            // Category indicator (if selected)
+            if (_selectedCategory != null) _buildCategoryIndicator(),
 
             // Recipe grid
             Expanded(
@@ -75,23 +127,9 @@ class _BuyerHomePageState extends State<BuyerHomePage> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          // Back button
-          GestureDetector(
-            onTap: () => Navigator.of(context).pop(),
-            child: Container(
-              width: 24,
-              height: 24,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(color: Colors.black, width: 1),
-              ),
-              child: const Icon(
-                Icons.chevron_left,
-                size: 24,
-              ),
-            ),
-          ),
-
+           // Empty container to maintain spacing (where back button was)
+          const SizedBox(width: 24),
+          
           // YumCart logo
           Row(
             children: [
@@ -161,7 +199,25 @@ class _BuyerHomePageState extends State<BuyerHomePage> {
         child: Row(
           children: [
             const SizedBox(width: 16),
-            const Icon(Icons.menu, color: Colors.grey),
+            // Updated menu icon - now functional!
+            GestureDetector(
+              onTap: _showCategoriesBottomSheet,
+              child: Container(
+                padding: const EdgeInsets.all(4),
+                decoration: BoxDecoration(
+                  color: _selectedCategory != null 
+                      ? const Color(0xFFFF5B9E).withOpacity(0.1) 
+                      : Colors.transparent,
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Icon(
+                  Icons.menu,
+                  color: _selectedCategory != null 
+                      ? const Color(0xFFFF5B9E) 
+                      : Colors.grey,
+                ),
+              ),
+            ),
             const SizedBox(width: 8),
             Expanded(
               child: TextField(
@@ -194,14 +250,94 @@ class _BuyerHomePageState extends State<BuyerHomePage> {
     );
   }
 
+  Widget _buildCategoryIndicator() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFF5B9E).withOpacity(0.1),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: const Color(0xFFFF5B9E),
+                width: 1,
+              ),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.filter_list,
+                  size: 16,
+                  color: const Color(0xFFFF5B9E),
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  _selectedCategory!,
+                  style: const TextStyle(
+                    color: Color(0xFFFF5B9E),
+                    fontWeight: FontWeight.w500,
+                    fontSize: 12,
+                  ),
+                ),
+                const SizedBox(width: 6),
+                GestureDetector(
+                  onTap: () => _filterByCategory(null),
+                  child: const Icon(
+                    Icons.close,
+                    size: 16,
+                    color: Color(0xFFFF5B9E),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          Text(
+            '${_filteredRecipes.length} recipes found',
+            style: TextStyle(
+              color: Colors.grey[600],
+              fontSize: 12,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildRecipeGrid(BuildContext context) {
     final recipes = _filteredRecipes;
 
     if (recipes.isEmpty) {
-      return const Center(
-        child: Text(
-          'No recipes found',
-          style: TextStyle(fontSize: 16, color: Colors.grey),
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.restaurant_menu,
+              size: 64,
+              color: Colors.grey[400],
+            ),
+            const SizedBox(height: 16),
+            Text(
+              _selectedCategory != null 
+                  ? 'No recipes found in $_selectedCategory'
+                  : 'No recipes found',
+              style: const TextStyle(fontSize: 16, color: Colors.grey),
+            ),
+            if (_selectedCategory != null) ...[
+              const SizedBox(height: 8),
+              TextButton(
+                onPressed: () => _filterByCategory(null),
+                child: const Text(
+                  'Show all recipes',
+                  style: TextStyle(color: Color(0xFFFF5B9E)),
+                ),
+              ),
+            ],
+          ],
         ),
       );
     }
