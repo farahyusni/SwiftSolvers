@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'seller_shop_profile_page.dart'; // <-- Add this import
-import 'seller_profile_page.dart'; 
+import 'seller_profile_page.dart';
+import 'seller_recipe_detail_page.dart';
+import 'edit_recipe_page.dart';
+import '../../services/recipe_service.dart';
 
 class SellerHomePage extends StatefulWidget {
   const SellerHomePage({Key? key}) : super(key: key);
@@ -10,29 +13,114 @@ class SellerHomePage extends StatefulWidget {
 }
 
 class _SellerHomePageState extends State<SellerHomePage> {
-  int _selectedBottomNavIndex = 0; // Start with Home tab selected
-  final TextEditingController _searchController = TextEditingController(); // Controller for search input
-  List<String> foodItems = [
-    'Malaysian Fried Rice',
-    'Hokkien Mee',
-    'Malaysian Chicken Curry',
-  ];
-  List<String> filteredFoodItems = []; // To hold the filtered items
+  int _selectedBottomNavIndex = 0;
+  final TextEditingController _searchController = TextEditingController();
+  final RecipeService _recipeService = RecipeService(); // Add this line
+
+  List<Map<String, dynamic>> recipes = [];
+  List<Map<String, dynamic>> filteredRecipes = [];
+  bool _isLoading = true; // Add loading state
 
   @override
   void initState() {
     super.initState();
-    filteredFoodItems = foodItems; // Initially, show all items
-    _searchController.addListener(_filterSearchResults); // Listen for text changes in the search field
+    _searchController.addListener(_filterSearchResults);
+    _debugDatabase();
+    _loadRecipes(); // Load recipes from database
   }
 
-  // Function to filter food items based on search text
-  void _filterSearchResults() {
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  // Load recipes from Firebase using your existing service
+  Future<void> _loadRecipes() async {
+    print('🔄 Loading recipes from database...');
     setState(() {
-      filteredFoodItems = foodItems
-          .where((item) => item.toLowerCase().contains(_searchController.text.toLowerCase()))
-          .toList();
+      _isLoading = true;
     });
+
+    try {
+      final loadedRecipes = await _recipeService.getAllRecipes();
+
+      // If no recipes found, initialize with sample data
+      if (loadedRecipes.isEmpty) {
+        print('⚠️ No recipes found, initializing database...');
+        await _recipeService.initializeDatabase();
+        final newRecipes = await _recipeService.getAllRecipes();
+
+        if (mounted) {
+          setState(() {
+            recipes = newRecipes;
+            filteredRecipes = newRecipes;
+            _isLoading = false;
+          });
+        }
+      } else {
+        if (mounted) {
+          setState(() {
+            recipes = loadedRecipes;
+            filteredRecipes = loadedRecipes;
+            _isLoading = false;
+          });
+        }
+      }
+
+      print('✅ Loaded ${recipes.length} recipes successfully');
+    } catch (e) {
+      print('❌ Error loading recipes: $e');
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  // Function to filter recipes based on search text
+  void _filterSearchResults() {
+    if (_searchController.text.isEmpty) {
+      setState(() {
+        filteredRecipes = recipes;
+      });
+    } else {
+      setState(() {
+        filteredRecipes =
+            recipes
+                .where(
+                  (recipe) =>
+                      recipe['name']?.toString().toLowerCase().contains(
+                        _searchController.text.toLowerCase(),
+                      ) ??
+                      false,
+                )
+                .toList();
+      });
+    }
+  }
+
+  Future<void> _debugDatabase() async {
+    print('🔍 Debugging database...');
+    try {
+      final recipes = await _recipeService.getAllRecipes();
+      print('📊 Found ${recipes.length} recipes in database');
+
+      if (recipes.isEmpty) {
+        print(
+          '⚠️ No recipes found. You might need to initialize the database.',
+        );
+        // Uncomment the line below if you need to add sample data
+        // await _recipeService.initializeDatabase();
+      } else {
+        for (var recipe in recipes) {
+          print('📖 Recipe: ${recipe['name']}');
+        }
+      }
+    } catch (e) {
+      print('❌ Database error: $e');
+    }
   }
 
   // Function to get the main content based on selected tab
@@ -45,11 +133,9 @@ class _SellerHomePageState extends State<SellerHomePage> {
       case 2: // Stocks
         return _buildStocksContent();
       case 3: // Recipe - Show search and food items
-        return Column(
-          children: [
-            _buildSearchBar(),
-            _buildFoodGrid(),
-          ],
+        return Expanded(
+          // Add Expanded here!
+          child: Column(children: [_buildSearchBar(), _buildFoodGrid()]),
         );
       default:
         return _buildQuickStats();
@@ -71,7 +157,7 @@ class _SellerHomePageState extends State<SellerHomePage> {
               ),
             ),
             const SizedBox(height: 30),
-            
+
             // Total Sales Card
             Container(
               width: double.infinity,
@@ -285,7 +371,8 @@ class _SellerHomePageState extends State<SellerHomePage> {
       bottomNavigationBar: _buildBottomNavigationBar(),
 
       // Floating Action Button above Recipe icon (only show when Recipe is selected)
-      floatingActionButton: _selectedBottomNavIndex == 3 ? _buildFloatingActionButton() : null,
+      floatingActionButton:
+          _selectedBottomNavIndex == 3 ? _buildFloatingActionButton() : null,
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
     );
   }
@@ -354,7 +441,9 @@ class _SellerHomePageState extends State<SellerHomePage> {
                   ),
                   onPressed: () {
                     Navigator.of(context).push(
-                      MaterialPageRoute(builder: (context) => const SellerShopProfilePage()),
+                      MaterialPageRoute(
+                        builder: (context) => const SellerShopProfilePage(),
+                      ),
                     );
                   },
                 ),
@@ -417,34 +506,154 @@ class _SellerHomePageState extends State<SellerHomePage> {
   }
 
   Widget _buildFoodGrid() {
-    return Padding(
-      padding: const EdgeInsets.all(20.0),
-      child: Column(
-        children: [
-          Row(
-            children: filteredFoodItems.map((item) => Expanded(
-              child: Container(
-                height: 120,
-                margin: const EdgeInsets.symmetric(horizontal: 4),
-                decoration: BoxDecoration(
-                  color: Colors.grey,
-                  borderRadius: BorderRadius.circular(12),
+    if (_isLoading) {
+      return const Expanded(
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              CircularProgressIndicator(color: Color(0xFFFF5B9E)),
+              SizedBox(height: 16),
+              Text(
+                'Loading recipes...',
+                style: TextStyle(fontSize: 16, color: Color(0xFF8B8B8B)),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    if (filteredRecipes.isEmpty) {
+      return Expanded(
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.restaurant_menu, size: 64, color: Colors.grey[400]),
+              const SizedBox(height: 16),
+              Text(
+                _searchController.text.isEmpty
+                    ? 'No recipes available'
+                    : 'No recipes found',
+                style: const TextStyle(
+                  fontSize: 18,
+                  color: Color(0xFF8B8B8B),
+                  fontWeight: FontWeight.w500,
                 ),
-                child: Center(
-                  child: Text(
-                    item,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                _searchController.text.isEmpty
+                    ? 'Start by adding your first recipe!'
+                    : 'Try a different search term',
+                style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return Expanded(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(20.0),
+        child: GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 2,
+            crossAxisSpacing: 12,
+            mainAxisSpacing: 12,
+            childAspectRatio: 1.2,
+          ),
+          itemCount: filteredRecipes.length,
+          itemBuilder: (context, index) {
+            final recipe = filteredRecipes[index];
+            return GestureDetector(
+              onTap: () {
+                print('🍽️ Tapped on recipe: ${recipe['name']}');
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder:
+                        (context) => SellerRecipeDetailPage(recipe: recipe),
+                  ),
+                );
+              },
+              child: Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.1),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
                     ),
-                    textAlign: TextAlign.center,
+                  ],
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: Stack(
+                    children: [
+                      // Background image or color
+                      Container(
+                        width: double.infinity,
+                        height: double.infinity,
+                        decoration: BoxDecoration(
+                          image:
+                              recipe['imageUrl'] != null &&
+                                      recipe['imageUrl'].isNotEmpty
+                                  ? DecorationImage(
+                                    image: NetworkImage(recipe['imageUrl']),
+                                    fit: BoxFit.cover,
+                                  )
+                                  : null,
+                          color:
+                              recipe['imageUrl'] == null ||
+                                      recipe['imageUrl'].isEmpty
+                                  ? Colors.grey[400]
+                                  : null,
+                        ),
+                      ),
+
+                      // Dark overlay
+                      Container(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [
+                              Colors.transparent,
+                              Colors.black.withOpacity(0.7),
+                            ],
+                          ),
+                        ),
+                      ),
+
+                      // Recipe name
+                      Positioned(
+                        bottom: 12,
+                        left: 12,
+                        right: 12,
+                        child: Text(
+                          recipe['name'] ?? 'Unknown Recipe',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                          ),
+                          textAlign: TextAlign.center,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
-            )).toList(),
-          ),
-        ],
+            );
+          },
+        ),
       ),
     );
   }
@@ -537,11 +746,7 @@ class _SellerHomePageState extends State<SellerHomePage> {
                 ),
               ],
             ),
-            child: const Icon(
-              Icons.add,
-              color: Colors.white,
-              size: 35,
-            ),
+            child: const Icon(Icons.add, color: Colors.white, size: 35),
           ),
         ),
       ],
