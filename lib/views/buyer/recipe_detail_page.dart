@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../services/favourites_services.dart';
+import '../../viewmodels/cart_viewmodel.dart';
 
 class RecipeDetailPage extends StatefulWidget {
   final Map<String, dynamic> recipe;
@@ -15,6 +17,7 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
   final FavoritesService _favoritesService = FavoritesService();
   bool _isFavorite = false;
   bool _isLoading = false;
+  bool _isAddingToCart = false;
 
   @override
   void initState() {
@@ -110,6 +113,88 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
       }
     }
   }
+
+  Future<void> _addToCart() async {
+    print('🛒 Add to cart button pressed');
+    
+    setState(() {
+      _isAddingToCart = true;
+    });
+
+    try {
+      // Create a cart view model to handle the operation
+      final cartViewModel = CartViewModel();
+      
+      final success = await cartViewModel.addIngredientsToCart(
+        recipe: widget.recipe,
+        checkedIngredients: _checkedIngredients,
+      );
+
+      if (mounted) {
+        setState(() {
+          _isAddingToCart = false;
+        });
+
+        if (success) {
+          // Count unchecked ingredients
+          final uncheckedCount = _checkedIngredients.where((checked) => !checked).length;
+          
+          if (uncheckedCount > 0) {
+            // Show success message with option to view cart
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('$uncheckedCount ingredients added to cart!'),
+                backgroundColor: const Color(0xFFFF5B9E),
+                duration: const Duration(seconds: 3),
+                action: SnackBarAction(
+                  label: 'View Cart',
+                  textColor: Colors.white,
+                  onPressed: () {
+                    Navigator.of(context).pushNamed('/shopping-cart');
+                  },
+                ),
+              ),
+            );
+          } else {
+            // All ingredients were checked (user has them all)
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('All ingredients are already checked! Uncheck the ones you need to buy.'),
+                backgroundColor: Colors.orange,
+                duration: Duration(seconds: 3),
+              ),
+            );
+          }
+        } else {
+          // Show error message
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Failed to add ingredients to cart. Please try again.'),
+              backgroundColor: Colors.red,
+              duration: Duration(seconds: 2),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      print('❌ Error adding to cart: $e');
+      
+      if (mounted) {
+        setState(() {
+          _isAddingToCart = false;
+        });
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('An error occurred. Please try again.'),
+            backgroundColor: Colors.red,
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final recipe = widget.recipe;
@@ -320,11 +405,30 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Ingredients',
+          Row(
+            children: [
+              const Text(
+                'Ingredients',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Icon(
+                Icons.info_outline,
+                size: 16,
+                color: Colors.grey[600],
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Check off ingredients you already have',
             style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
+              fontSize: 14,
+              color: Colors.grey[600],
+              fontStyle: FontStyle.italic,
             ),
           ),
           const SizedBox(height: 16),
@@ -384,11 +488,6 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
                       ),
                     ),
                   ),
-                  // Dropdown arrow (for future price comparison feature)
-                  const Icon(
-                    Icons.keyboard_arrow_down,
-                    color: Colors.grey,
-                  ),
                 ],
               ),
             );
@@ -399,36 +498,88 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
   }
 
   Widget _buildAddToCartButton(BuildContext context) {
+    final uncheckedCount = _checkedIngredients.where((checked) => !checked).length;
+    
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: SizedBox(
-        width: double.infinity,
-        child: ElevatedButton(
-          onPressed: () {
-            // Show success message
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Ingredients added to cart!'),
-                backgroundColor: Color(0xFFFF5B9E),
+      child: Column(
+        children: [
+          if (uncheckedCount > 0)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              margin: const EdgeInsets.only(bottom: 12),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFF5B9E).withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: const Color(0xFFFF5B9E).withOpacity(0.3),
+                ),
               ),
-            );
-          },
-          style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFFFF5B9E),
-            foregroundColor: Colors.white,
-            padding: const EdgeInsets.symmetric(vertical: 16),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(25),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.shopping_cart_outlined,
+                    color: const Color(0xFFFF5B9E),
+                    size: 20,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    '$uncheckedCount ingredients will be added to cart',
+                    style: const TextStyle(
+                      fontSize: 14,
+                      color: Color(0xFFFF5B9E),
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: _isAddingToCart ? null : _addToCart,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFFF5B9E),
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(25),
+                ),
+                disabledBackgroundColor: Colors.grey[400],
+              ),
+              child: _isAddingToCart
+                  ? const SizedBox(
+                      height: 20,
+                      width: 20,
+                      child: CircularProgressIndicator(
+                        color: Colors.white,
+                        strokeWidth: 2,
+                      ),
+                    )
+                  : Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(
+                          Icons.shopping_cart,
+                          size: 20,
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          uncheckedCount > 0
+                              ? 'Add $uncheckedCount ingredients to cart'
+                              : 'Add to cart',
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
             ),
           ),
-          child: const Text(
-            'Add to cart',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ),
+        ],
       ),
     );
   }
@@ -456,13 +607,25 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    '$step. ',
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
+                  Container(
+                    width: 24,
+                    height: 24,
+                    decoration: const BoxDecoration(
+                      color: Color(0xFFFF5B9E),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Center(
+                      child: Text(
+                        '$step',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                     ),
                   ),
+                  const SizedBox(width: 12),
                   Expanded(
                     child: Text(
                       text,

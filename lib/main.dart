@@ -3,6 +3,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'viewmodels/auth_viewmodel.dart';
+import 'viewmodels/cart_viewmodel.dart';
 import 'utils/route_generator.dart';
 import 'services/navigation_service.dart';
 
@@ -27,6 +28,7 @@ class MyApp extends StatelessWidget {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => AuthViewModel()),
+        ChangeNotifierProvider(create: (_) => CartViewModel()),
         // Add other providers here
       ],
       child: MaterialApp(

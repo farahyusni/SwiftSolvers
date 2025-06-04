@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:yum_cart/services/recipe_service.dart';
 import 'package:yum_cart/views/buyer/widgets/categories_bottom_sheet.dart';
+import '../../viewmodels/cart_viewmodel.dart';
 
 class BuyerHomePage extends StatefulWidget {
   const BuyerHomePage({Key? key}) : super(key: key);
@@ -21,6 +23,10 @@ class _BuyerHomePageState extends State<BuyerHomePage> {
   void initState() {
     super.initState();
     _loadRecipes();
+    // Load cart when page initializes
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<CartViewModel>().loadCart();
+    });
   }
 
   Future<void> _loadRecipes() async {
@@ -158,32 +164,87 @@ class _BuyerHomePageState extends State<BuyerHomePage> {
             ],
           ),
 
-          // Favorite and profile buttons
+          // Action buttons (cart, favorites, profile)
           Row(
             children: [
-              // Updated favorites button - now functional!
+              // Shopping Cart button with badge
+              _buildCartButton(context),
+              
+              // Favorites button
               IconButton(
                 icon: const Icon(
-                  Icons.bookmark_border, // Changed to bookmark icon for consistency
-                  color: Color(0xFFFF5B9E), // Added your app's primary color
+                  Icons.bookmark_border,
+                  color: Color(0xFFFF5B9E),
                 ),
                 onPressed: () {
-                  // Navigate to favorites page
                   Navigator.of(context).pushNamed('/favorites');
                 },
-                tooltip: 'My Favorites', // Added tooltip for better UX
+                tooltip: 'My Favorites',
               ),
+              
+              // Profile button
               IconButton(
                 icon: const Icon(Icons.person_outline),
                 onPressed: () {
                   Navigator.of(context).pushNamed('/buyer-profile');
                 },
-                tooltip: 'Profile', // Added tooltip for consistency
+                tooltip: 'Profile',
               ),
             ],
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildCartButton(BuildContext context) {
+    return Consumer<CartViewModel>(
+      builder: (context, cartViewModel, child) {
+        final itemCount = cartViewModel.totalItems;
+        
+        return Stack(
+          children: [
+            IconButton(
+              icon: const Icon(
+                Icons.shopping_cart_outlined,
+                color: Color(0xFFFF5B9E),
+              ),
+              onPressed: () {
+                Navigator.of(context).pushNamed('/shopping-cart');
+              },
+              tooltip: 'Shopping Cart',
+            ),
+            
+            // Badge showing item count
+            if (itemCount > 0)
+              Positioned(
+                right: 6,
+                top: 6,
+                child: Container(
+                  padding: const EdgeInsets.all(2),
+                  decoration: BoxDecoration(
+                    color: Colors.red,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: Colors.white, width: 1),
+                  ),
+                  constraints: const BoxConstraints(
+                    minWidth: 18,
+                    minHeight: 18,
+                  ),
+                  child: Text(
+                    itemCount > 99 ? '99+' : '$itemCount',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              ),
+          ],
+        );
+      },
     );
   }
 
