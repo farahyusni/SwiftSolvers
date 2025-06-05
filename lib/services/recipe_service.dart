@@ -380,15 +380,29 @@ class RecipeService {
     }
   }
 
-  // Method to fetch all recipes (for your app to use)
   Future<List<Map<String, dynamic>>> getAllRecipes() async {
     try {
       QuerySnapshot snapshot = await _firestore.collection('recipes').get();
-      return snapshot.docs
-          .map((doc) => {'id': doc.id, ...doc.data() as Map<String, dynamic>})
-          .toList();
+
+      List<Map<String, dynamic>> recipes = [];
+
+      for (var doc in snapshot.docs) {
+        Map<String, dynamic> recipeData = doc.data() as Map<String, dynamic>;
+
+        // IMPORTANT: Always set the ID from the document ID
+        recipeData['id'] = doc.id;
+
+        // Debug logging
+        print('📖 Recipe: "${recipeData['name']}" - Document ID: "${doc.id}"');
+        print('📖 Recipe ID field: "${recipeData['id']}"');
+
+        recipes.add(recipeData);
+      }
+
+      print('✅ Loaded ${recipes.length} recipes with proper IDs');
+      return recipes;
     } catch (e) {
-      print('Error fetching recipes: $e');
+      print('❌ Error fetching recipes: $e');
       return [];
     }
   }
@@ -481,19 +495,67 @@ class RecipeService {
     }
   }
 
+  // Replace your updateRecipe method in recipe_service.dart
   Future<bool> updateRecipe(
     String recipeId,
     Map<String, dynamic> updatedData,
   ) async {
     try {
       print('🔄 Updating recipe with ID: $recipeId');
+      print('🔄 Update data keys: ${updatedData.keys.toList()}');
 
-      await _firestore.collection('recipes').doc(recipeId).update(updatedData);
+      // Remove the 'id' field from update data since Firestore doesn't allow updating document ID
+      Map<String, dynamic> cleanData = Map.from(updatedData);
+      cleanData.remove('id');
+
+      print('🔄 Clean data keys: ${cleanData.keys.toList()}');
+
+      await _firestore.collection('recipes').doc(recipeId).update(cleanData);
 
       print('✅ Recipe updated successfully in Firestore');
       return true;
     } catch (e) {
       print('❌ Error updating recipe: $e');
+      return false;
+    }
+  }
+
+  // Replace your createRecipe method in recipe_service.dart
+  Future<Map<String, dynamic>?> createRecipe(
+    Map<String, dynamic> recipeData,
+  ) async {
+    try {
+      print('🆕 Creating new recipe: ${recipeData['name']}');
+
+      // Add the recipe to Firestore and get the document reference
+      DocumentReference docRef = await _firestore
+          .collection('recipes')
+          .add(recipeData);
+
+      // Get the generated document ID
+      String newRecipeId = docRef.id;
+
+      // Add the ID to the recipe data
+      recipeData['id'] = newRecipeId;
+
+      print('✅ New recipe created successfully with ID: $newRecipeId');
+      return recipeData; // Return the complete recipe data with ID
+    } catch (e) {
+      print('❌ Error creating recipe: $e');
+      return null;
+    }
+  }
+
+  Future<bool> deleteRecipe(String recipeId) async {
+    try {
+      if (recipeId.isEmpty) {
+        return false;
+      }
+
+      await _firestore.collection('recipes').doc(recipeId).delete();
+      return true;
+    } catch (e) {
+      print('❌ Error deleting recipe: $e');
       return false;
     }
   }

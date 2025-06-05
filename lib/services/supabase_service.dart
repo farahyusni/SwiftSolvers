@@ -37,21 +37,28 @@ class SupabaseService {
         final buckets = await _client.storage.listBuckets();
         print('🔍 Found ${buckets.length} buckets');
         for (var bucket in buckets) {
-          print('🔍 Available bucket: "${bucket.name}" (public: ${bucket.public})');
+          print(
+            '🔍 Available bucket: "${bucket.name}" (public: ${bucket.public})',
+          );
         }
 
         // Check if our target bucket exists
-        final hasTargetBucket = buckets.any((bucket) => bucket.name == 'yumcart-images');
+        final hasTargetBucket = buckets.any(
+          (bucket) => bucket.name == 'yumcart-images',
+        );
         print('🔍 yumcart-images bucket found: $hasTargetBucket');
 
         if (!hasTargetBucket) {
           print('❌ Bucket "yumcart-images" not found!');
-          print('❌ Available buckets: ${buckets.map((b) => '"${b.name}"').join(', ')}');
-          throw Exception('Bucket yumcart-images not found. Available: ${buckets.map((b) => b.name).join(', ')}');
+          print(
+            '❌ Available buckets: ${buckets.map((b) => '"${b.name}"').join(', ')}',
+          );
+          throw Exception(
+            'Bucket yumcart-images not found. Available: ${buckets.map((b) => b.name).join(', ')}',
+          );
         }
 
         print('✅ Target bucket found!');
-
       } catch (e) {
         print('❌ Storage connection error: $e');
         throw Exception('Cannot connect to storage: $e');
@@ -78,7 +85,6 @@ class SupabaseService {
       print('✅ Public URL: $publicUrl');
 
       return publicUrl;
-
     } catch (e) {
       print('❌ Upload failed: $e');
       print('❌ Error details: ${e.toString()}');
@@ -104,5 +110,46 @@ class SupabaseService {
         .getPublicUrl(filePath);
 
     return publicUrl;
+  }
+
+  // Get all recipe images from Supabase storage
+  Future<List<Map<String, String>>> getRecipeImages() async {
+    try {
+      print('📸 Fetching recipe images from Supabase...');
+
+      final List<FileObject> files = await _client.storage
+          .from('yumcart-images')
+          .list(path: 'recipes');
+
+      List<Map<String, String>> images = [];
+
+      for (var file in files) {
+        final fullPath = 'recipes/${file.name}';
+        final publicUrl = _client.storage
+            .from('yumcart-images')
+            .getPublicUrl(fullPath);
+
+        images.add({'name': file.name, 'url': publicUrl, 'path': fullPath});
+      }
+
+      print('📸 Found ${images.length} recipe images');
+      return images;
+    } catch (e) {
+      print('❌ Error fetching recipe images: $e');
+      return [];
+    }
+  }
+
+  // Delete image from Supabase storage
+  Future<bool> deleteRecipeImage(String filePath) async {
+    try {
+      await _client.storage.from('yumcart-images').remove([filePath]);
+
+      print('🗑️ Deleted image: $filePath');
+      return true;
+    } catch (e) {
+      print('❌ Error deleting image: $e');
+      return false;
+    }
   }
 }

@@ -35,15 +35,24 @@ class _SellerHomePageState extends State<SellerHomePage> {
     super.dispose();
   }
 
-  // Load recipes from Firebase using your existing service
   Future<void> _loadRecipes() async {
     print('🔄 Loading recipes from database...');
-    setState(() {
-      _isLoading = true;
-    });
+
+    if (mounted) {
+      setState(() {
+        _isLoading = true;
+      });
+    }
 
     try {
       final loadedRecipes = await _recipeService.getAllRecipes();
+
+      print('📊 Loaded ${loadedRecipes.length} recipes');
+
+      // Debug: Print all recipe names and IDs
+      for (var recipe in loadedRecipes) {
+        print('📖 Recipe: "${recipe['name']}" - ID: "${recipe['id']}"');
+      }
 
       // If no recipes found, initialize with sample data
       if (loadedRecipes.isEmpty) {
@@ -69,13 +78,87 @@ class _SellerHomePageState extends State<SellerHomePage> {
       }
 
       print('✅ Loaded ${recipes.length} recipes successfully');
+
+      // Filter current search if there's text in search controller
+      if (_searchController.text.isNotEmpty) {
+        _filterSearchResults();
+      }
     } catch (e) {
       print('❌ Error loading recipes: $e');
       if (mounted) {
         setState(() {
           _isLoading = false;
         });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error loading recipes: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
       }
+    }
+  }
+
+  Future<void> _navigateToCreateRecipe() async {
+    print('🆕 Navigating to create new recipe page');
+
+    try {
+      // Create an empty recipe template
+      final emptyRecipe = {
+        'id': '', // Will be set after creation
+        'name': '',
+        'description': '',
+        'category': 'Quick Meals',
+        'difficulty': 'Easy',
+        'prepTime': 0,
+        'cookTime': 0,
+        'servings': 1,
+        'isPopular': false,
+        'imageUrl': '',
+        'ingredients': [],
+        'instructions': [],
+        'tags': [],
+        'nutritionInfo': {
+          'calories': 0,
+          'protein': '0g',
+          'carbs': '0g',
+          'fat': '0g',
+        },
+        'totalEstimatedCost': {'tesco': 0.0, 'mydin': 0.0, 'giant': 0.0},
+        'createdBy': 'admin', // You can change this to current user ID
+        'isNewRecipe': true, // Flag to indicate this is a new recipe
+      };
+
+      final result = await Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (context) => EditRecipePage(recipe: emptyRecipe),
+        ),
+      );
+
+      // If a new recipe was created, refresh the recipe list
+      if (result != null && result is Map<String, dynamic>) {
+        print('✅ New recipe was created, refreshing recipe list');
+
+        // Reload recipes from database
+        await _loadRecipes();
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('New recipe created successfully!'),
+            backgroundColor: Color(0xFFFF5B9E),
+            duration: Duration(seconds: 3),
+          ),
+        );
+      }
+    } catch (e) {
+      print('❌ Error navigating to create recipe page: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Failed to open create recipe page. Please try again.'),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
 
@@ -562,23 +645,99 @@ class _SellerHomePageState extends State<SellerHomePage> {
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
           gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 2,
-            crossAxisSpacing: 12,
-            mainAxisSpacing: 12,
-            childAspectRatio: 1.2,
+            crossAxisCount: 3,
+            crossAxisSpacing: 8,
+            mainAxisSpacing: 8,
+            childAspectRatio: 0.9,
           ),
           itemCount: filteredRecipes.length,
           itemBuilder: (context, index) {
             final recipe = filteredRecipes[index];
             return GestureDetector(
-              onTap: () {
+              // In your SellerHomePage, replace the recipe grid item onTap with this:
+              onTap: () async {
                 print('🍽️ Tapped on recipe: ${recipe['name']}');
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder:
-                        (context) => SellerRecipeDetailPage(recipe: recipe),
-                  ),
-                );
+                print('🔍 Recipe ID: ${recipe['id']}');
+
+                // Make sure the recipe has a valid ID before navigation
+                if (recipe['id'] == null || recipe['id'].toString().isEmpty) {
+                  print('❌ Recipe has no valid ID, cannot open details');
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Cannot open recipe: Invalid recipe ID'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                  return;
+                }
+
+                try {
+                  // Navigate to detail page and wait for result
+                  final result = await Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder:
+                          (context) => SellerRecipeDetailPage(recipe: recipe),
+                    ),
+                  );
+
+                  print('🔄 Received result from detail page: $result');
+
+                  // Handle the result
+                  if (result != null && result is Map<String, dynamic>) {
+                    if (result['deleted'] == true) {
+                      print('🗑️ Recipe was deleted, refreshing list...');
+
+                      // Show a brief loading indicator
+                      setState(() {
+                        _isLoading = true;
+                      });
+
+                      // Reload the recipe list
+                      await _loadRecipes();
+
+                      // Show success message
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Recipe deleted and list refreshed!'),
+                            backgroundColor: Color(0xFFFF5B9E),
+                            duration: Duration(seconds: 2),
+                          ),
+                        );
+                      }
+                    } else if (result['updated'] == true) {
+                      // Recipe was updated, refresh the list
+                      print('✏️ Recipe was updated, refreshing list...');
+
+                      setState(() {
+                        _isLoading = true;
+                      });
+
+                      await _loadRecipes();
+
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Recipe updated and list refreshed!'),
+                            backgroundColor: Color(0xFFFF5B9E),
+                            duration: Duration(seconds: 2),
+                          ),
+                        );
+                      }
+                    }
+                  }
+                } catch (e) {
+                  print('❌ Error navigating to recipe details: $e');
+
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Error opening recipe details: $e'),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
+                  }
+                }
               },
               child: Container(
                 decoration: BoxDecoration(
@@ -732,21 +891,28 @@ class _SellerHomePageState extends State<SellerHomePage> {
         Positioned(
           bottom: 10,
           left: MediaQuery.of(context).size.width / 2 - 35,
-          child: Container(
-            width: 70,
-            height: 70,
-            decoration: BoxDecoration(
-              color: Colors.black,
-              shape: BoxShape.circle,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.3),
-                  blurRadius: 10,
-                  offset: const Offset(0, 5),
-                ),
-              ],
+          child: GestureDetector(
+            // Add GestureDetector for tap handling
+            onTap: () {
+              print('➕ Create new recipe button tapped');
+              _navigateToCreateRecipe();
+            },
+            child: Container(
+              width: 70,
+              height: 70,
+              decoration: BoxDecoration(
+                color: Colors.black,
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.3),
+                    blurRadius: 10,
+                    offset: const Offset(0, 5),
+                  ),
+                ],
+              ),
+              child: const Icon(Icons.add, color: Colors.white, size: 35),
             ),
-            child: const Icon(Icons.add, color: Colors.white, size: 35),
           ),
         ),
       ],

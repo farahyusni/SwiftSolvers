@@ -1,50 +1,43 @@
 import 'package:flutter/material.dart';
-import '../../services/recipe_service.dart';
 import 'edit_recipe_page.dart';
+import '../../services/recipe_service.dart';
 
 class SellerRecipeDetailPage extends StatefulWidget {
   final Map<String, dynamic> recipe;
 
-  const SellerRecipeDetailPage({Key? key, required this.recipe})
-    : super(key: key);
+  const SellerRecipeDetailPage({Key? key, required this.recipe}) : super(key: key);
 
   @override
   _SellerRecipeDetailPageState createState() => _SellerRecipeDetailPageState();
 }
 
 class _SellerRecipeDetailPageState extends State<SellerRecipeDetailPage> {
-  @override
-  void initState() {
-    super.initState();
-    print('🚀 SellerRecipeDetailPage initState started');
-    print('📦 Recipe data: ${widget.recipe}');
-  }
+  final RecipeService _recipeService = RecipeService();
+  bool _isDeleting = false;
 
   @override
   Widget build(BuildContext context) {
-    final recipe = widget.recipe;
-    final ingredients = recipe['ingredients'] as List<dynamic>? ?? [];
-    final instructions = recipe['instructions'] as List<dynamic>? ?? [];
-
     return Scaffold(
-      backgroundColor: const Color(0xFFFEECEE), // Light pink background
+      backgroundColor: const Color(0xFFFEECEE),
       body: SafeArea(
         child: Column(
           children: [
-            // Header with recipe image and title
-            _buildHeader(context, recipe),
-
-            // Scrollable content
+            _buildAppBar(),
             Expanded(
               child: SingleChildScrollView(
+                padding: const EdgeInsets.all(16.0),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Ingredients section
-                    _buildIngredientsSection(ingredients),
-
-                    // Instructions section
-                    _buildInstructionsSection(instructions),
+                    _buildRecipeImage(),
+                    const SizedBox(height: 16),
+                    _buildRecipeInfo(),
+                    const SizedBox(height: 24),
+                    _buildActionButtons(),
+                    const SizedBox(height: 24),
+                    _buildIngredientsSection(),
+                    const SizedBox(height: 24),
+                    _buildInstructionsSection(),
                   ],
                 ),
               ),
@@ -55,151 +48,47 @@ class _SellerRecipeDetailPageState extends State<SellerRecipeDetailPage> {
     );
   }
 
-  Widget _buildHeader(BuildContext context, Map<String, dynamic> recipe) {
-    return Container(
-      height: 300,
-      child: Stack(
+  Widget _buildAppBar() {
+    return Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: Row(
         children: [
-          // Background image
-          Container(
-            height: 300,
-            width: double.infinity,
-            decoration: BoxDecoration(
-              image:
-                  recipe['imageUrl'] != null && recipe['imageUrl'].isNotEmpty
-                      ? DecorationImage(
-                        image: NetworkImage(recipe['imageUrl']),
-                        fit: BoxFit.cover,
-                      )
-                      : null,
-              color:
-                  recipe['imageUrl'] == null || recipe['imageUrl'].isEmpty
-                      ? Colors.grey[300]
-                      : null,
+          GestureDetector(
+            onTap: () => Navigator.pop(context),
+            child: Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(color: Colors.black, width: 2),
+              ),
+              child: const Icon(Icons.chevron_left, color: Colors.black),
             ),
-            child:
-                recipe['imageUrl'] == null || recipe['imageUrl'].isEmpty
-                    ? const Center(
-                      child: Icon(
-                        Icons.image_not_supported,
-                        size: 50,
-                        color: Colors.grey,
-                      ),
-                    )
-                    : null,
           ),
-
-          // Dark overlay
-          Container(
-            height: 300,
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [
-                  Colors.black.withOpacity(0.3),
-                  Colors.black.withOpacity(0.7),
-                ],
+          const Expanded(
+            child: Center(
+              child: Text(
+                'Recipe Details',
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black,
+                ),
               ),
             ),
           ),
-
-          // Top row with back button and profile icon
-          Positioned(
-            top: 16,
-            left: 16,
-            right: 16,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                GestureDetector(
-                  onTap: () => Navigator.of(context).pop(),
-                  child: Container(
-                    width: 40,
-                    height: 40,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      border: Border.all(color: Colors.white, width: 2),
-                    ),
-                    child: const Icon(
-                      Icons.chevron_left,
-                      color: Colors.white,
-                      size: 24,
-                    ),
-                  ),
-                ),
-                GestureDetector(
-                  onTap: () {
-                    Navigator.of(context).pushNamed('/seller-profile');
-                  },
-                  child: Container(
-                    width: 40,
-                    height: 40,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      border: Border.all(color: Colors.white, width: 2),
-                    ),
-                    child: const Icon(
-                      Icons.person_outline,
-                      color: Colors.white,
-                      size: 24,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          // Recipe title and edit button
-          Positioned(
-            bottom: 40,
-            left: 16,
-            right: 16,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                Text(
-                  recipe['name'] ?? 'Unknown Recipe',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 32,
-                    fontWeight: FontWeight.bold,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 16),
-                GestureDetector(
-                  onTap: () {
-                    print('✏️ Edit button tapped!');
-                    _showEditOptions(context);
-                  },
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 24,
-                      vertical: 8,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.9),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: const Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.edit, size: 16, color: Colors.black),
-                        SizedBox(width: 8),
-                        Text(
-                          'Edit',
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w500,
-                            color: Colors.black,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
+          GestureDetector(
+            onTap: () {
+              Navigator.of(context).pushNamed('/seller-profile');
+            },
+            child: Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(color: Colors.black, width: 2),
+              ),
+              child: const Icon(Icons.person_outline, color: Colors.black),
             ),
           ),
         ],
@@ -207,25 +96,233 @@ class _SellerRecipeDetailPageState extends State<SellerRecipeDetailPage> {
     );
   }
 
-  Widget _buildIngredientsSection(List<dynamic> ingredients) {
+  Widget _buildRecipeImage() {
+    return Container(
+      width: double.infinity,
+      height: 250,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 10,
+            offset: const Offset(0, 5),
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(20),
+        child: widget.recipe['imageUrl'] != null && widget.recipe['imageUrl'].isNotEmpty
+            ? Image.network(
+                widget.recipe['imageUrl'],
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) {
+                  return _buildImagePlaceholder();
+                },
+              )
+            : _buildImagePlaceholder(),
+      ),
+    );
+  }
+
+  Widget _buildImagePlaceholder() {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.grey[300],
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.image_outlined, size: 60, color: Colors.grey[500]),
+            const SizedBox(height: 8),
+            Text(
+              'No Image',
+              style: TextStyle(
+                fontSize: 16,
+                color: Colors.grey[600],
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildRecipeInfo() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          widget.recipe['name'] ?? 'Unknown Recipe',
+          style: const TextStyle(
+            fontSize: 28,
+            fontWeight: FontWeight.bold,
+            color: Colors.black,
+          ),
+        ),
+        const SizedBox(height: 8),
+        if (widget.recipe['description'] != null && widget.recipe['description'].isNotEmpty)
+          Text(
+            widget.recipe['description'],
+            style: TextStyle(
+              fontSize: 16,
+              color: Colors.grey[700],
+              height: 1.4,
+            ),
+          ),
+        const SizedBox(height: 16),
+        _buildRecipeStats(),
+      ],
+    );
+  }
+
+  Widget _buildRecipeStats() {
     return Container(
       padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.8),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.withOpacity(0.3)),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
-          const Text(
-            'Ingredients',
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+          _buildStatItem(
+            icon: Icons.schedule,
+            label: 'Prep Time',
+            value: '${widget.recipe['prepTime'] ?? 0} min',
           ),
-          const SizedBox(height: 16),
-          ...ingredients.asMap().entries.map((entry) {
-            final ingredient = entry.value;
-            final name = ingredient['name'] ?? '';
-            final amount = ingredient['amount'] ?? '';
-            final unit = ingredient['unit'] ?? '';
+          _buildStatItem(
+            icon: Icons.timer,
+            label: 'Cook Time',
+            value: '${widget.recipe['cookTime'] ?? 0} min',
+          ),
+          _buildStatItem(
+            icon: Icons.people,
+            label: 'Servings',
+            value: '${widget.recipe['servings'] ?? 1}',
+          ),
+        ],
+      ),
+    );
+  }
 
-            return Padding(
-              padding: const EdgeInsets.symmetric(vertical: 4),
+  Widget _buildStatItem({required IconData icon, required String label, required String value}) {
+    return Column(
+      children: [
+        Icon(icon, color: const Color(0xFFFF5B9E), size: 24),
+        const SizedBox(height: 4),
+        Text(
+          value,
+          style: const TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+            color: Colors.black,
+          ),
+        ),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 12,
+            color: Colors.grey[600],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildActionButtons() {
+    return Row(
+      children: [
+        Expanded(
+          child: ElevatedButton.icon(
+            onPressed: _isDeleting ? null : _navigateToEdit,
+            icon: const Icon(Icons.edit),
+            label: const Text('Edit'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFFF5B9E),
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(25),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(width: 16),
+        Expanded(
+          child: ElevatedButton.icon(
+            onPressed: _isDeleting ? null : _deleteRecipe,
+            icon: _isDeleting
+                ? const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(
+                      color: Colors.white,
+                      strokeWidth: 2,
+                    ),
+                  )
+                : const Icon(Icons.delete),
+            label: Text(_isDeleting ? 'Deleting...' : 'Delete'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(25),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildIngredientsSection() {
+    final ingredients = widget.recipe['ingredients'] as List<dynamic>? ?? [];
+    
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Ingredients',
+          style: TextStyle(
+            fontSize: 22,
+            fontWeight: FontWeight.bold,
+            color: Colors.black,
+          ),
+        ),
+        const SizedBox(height: 12),
+        if (ingredients.isEmpty)
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.grey[100],
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Text(
+              'No ingredients added yet.',
+              style: TextStyle(
+                fontSize: 16,
+                color: Colors.grey,
+                fontStyle: FontStyle.italic,
+              ),
+            ),
+          )
+        else
+          ...ingredients.asMap().entries.map((entry) {
+            final ingredient = entry.value as Map<String, dynamic>;
+            return Container(
+              margin: const EdgeInsets.only(bottom: 8),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.8),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.grey.withOpacity(0.3)),
+              ),
               child: Row(
                 children: [
                   Container(
@@ -239,52 +336,79 @@ class _SellerRecipeDetailPageState extends State<SellerRecipeDetailPage> {
                   const SizedBox(width: 12),
                   Expanded(
                     child: Text(
-                      '$amount${unit.isNotEmpty ? ' $unit' : ''} $name',
-                      style: const TextStyle(fontSize: 16, color: Colors.black),
+                      '${ingredient['amount']} ${ingredient['unit']} ${ingredient['name']}',
+                      style: const TextStyle(
+                        fontSize: 16,
+                        color: Colors.black,
+                      ),
                     ),
                   ),
                 ],
               ),
             );
           }).toList(),
-        ],
-      ),
+      ],
     );
   }
 
-  Widget _buildInstructionsSection(List<dynamic> instructions) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Instructions',
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+  Widget _buildInstructionsSection() {
+    final instructions = widget.recipe['instructions'] as List<dynamic>? ?? [];
+    
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Instructions',
+          style: TextStyle(
+            fontSize: 22,
+            fontWeight: FontWeight.bold,
+            color: Colors.black,
           ),
-          const SizedBox(height: 16),
-          ...instructions.map((instruction) {
-            final step = instruction['step'] ?? 0;
-            final text = instruction['instruction'] ?? '';
-
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 12),
+        ),
+        const SizedBox(height: 12),
+        if (instructions.isEmpty)
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.grey[100],
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Text(
+              'No instructions added yet.',
+              style: TextStyle(
+                fontSize: 16,
+                color: Colors.grey,
+                fontStyle: FontStyle.italic,
+              ),
+            ),
+          )
+        else
+          ...instructions.asMap().entries.map((entry) {
+            final index = entry.key;
+            final instruction = entry.value as Map<String, dynamic>;
+            return Container(
+              margin: const EdgeInsets.only(bottom: 12),
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.8),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.grey.withOpacity(0.3)),
+              ),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Container(
-                    width: 24,
-                    height: 24,
+                    width: 30,
+                    height: 30,
                     decoration: const BoxDecoration(
                       color: Color(0xFFFF5B9E),
                       shape: BoxShape.circle,
                     ),
                     child: Center(
                       child: Text(
-                        '$step',
+                        '${index + 1}',
                         style: const TextStyle(
                           color: Colors.white,
-                          fontSize: 12,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -292,134 +416,165 @@ class _SellerRecipeDetailPageState extends State<SellerRecipeDetailPage> {
                   ),
                   const SizedBox(width: 12),
                   Expanded(
-                    child: Text(text, style: const TextStyle(fontSize: 16)),
+                    child: Text(
+                      instruction['instruction'] ?? '',
+                      style: const TextStyle(
+                        fontSize: 16,
+                        color: Colors.black,
+                        height: 1.4,
+                      ),
+                    ),
                   ),
                 ],
               ),
             );
           }).toList(),
-        ],
-      ),
+      ],
     );
   }
 
-  void _showEditOptions(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (BuildContext context) {
-        return Container(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: Colors.grey[300],
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-              const SizedBox(height: 20),
-              const Text(
-                'Edit Recipe',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 20),
-              ListTile(
-                leading: const Icon(Icons.edit, color: Color(0xFFFF5B9E)),
-                title: const Text('Edit Recipe Details'),
-                onTap: () {
-                  Navigator.pop(context); // Close bottom sheet
-                  _navigateToEditPage(context);
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.delete, color: Colors.red),
-                title: const Text('Delete Recipe'),
-                onTap: () {
-                  Navigator.pop(context);
-                  _showDeleteConfirmation(context);
-                },
-              ),
-              const SizedBox(height: 20),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  // Add this new method to handle navigation to edit page
-  Future<void> _navigateToEditPage(BuildContext context) async {
-    print('📝 Navigating to edit page for recipe: ${widget.recipe['name']}');
-
+  Future<void> _navigateToEdit() async {
     try {
+      print('✏️ Navigating to edit recipe: ${widget.recipe['name']}');
+      
       final result = await Navigator.of(context).push(
         MaterialPageRoute(
           builder: (context) => EditRecipePage(recipe: widget.recipe),
         ),
       );
 
-      // If the edit page returns updated data, refresh this page
-      if (result != null && result is Map<String, dynamic>) {
-        print('✅ Recipe was updated, refreshing detail page');
+      print('🔄 Received result from edit page: $result');
 
+      if (result != null && result is Map<String, dynamic>) {
+        print('✅ Recipe was updated, updating local data...');
+        
+        // Update the local recipe data
         setState(() {
-          // Update the recipe data with the returned updated data
+          // Update the widget.recipe with new data
           widget.recipe.clear();
           widget.recipe.addAll(result);
         });
-
+        
+        // Show success message
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Recipe details refreshed!'),
+            content: Text('Recipe updated successfully!'),
             backgroundColor: Color(0xFFFF5B9E),
             duration: Duration(seconds: 2),
           ),
         );
+        
+        // Return to home page with update result
+        Navigator.of(context).pop({'updated': true, 'recipe': result});
       }
     } catch (e) {
-      print('❌ Error navigating to edit page: $e');
+      print('❌ Error navigating to edit: $e');
+      
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Failed to open edit page. Please try again.'),
+        SnackBar(
+          content: Text('Error opening edit page: $e'),
           backgroundColor: Colors.red,
         ),
       );
     }
   }
 
-  void _showDeleteConfirmation(BuildContext context) {
-    showDialog(
+  Future<void> _deleteRecipe() async {
+    print('🗑️ Starting to delete recipe...');
+    
+    // Show confirmation dialog first
+    final bool? shouldDelete = await showDialog<bool>(
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
           title: const Text('Delete Recipe'),
-          content: const Text(
-            'Are you sure you want to delete this recipe? This action cannot be undone.',
-          ),
+          content: Text('Are you sure you want to delete "${widget.recipe['name']}"?'),
           actions: [
             TextButton(
-              onPressed: () => Navigator.pop(context),
+              onPressed: () => Navigator.of(context).pop(false),
               child: const Text('Cancel'),
             ),
             TextButton(
-              onPressed: () {
-                Navigator.pop(context);
-                // TODO: Implement delete functionality
-                print('Delete recipe: ${widget.recipe['name']}');
-                Navigator.pop(context); // Go back to previous page
-              },
-              child: const Text('Delete', style: TextStyle(color: Colors.red)),
+              onPressed: () => Navigator.of(context).pop(true),
+              style: TextButton.styleFrom(foregroundColor: Colors.red),
+              child: const Text('Delete'),
             ),
           ],
         );
       },
     );
+
+    if (shouldDelete != true) {
+      print('🚫 Delete cancelled by user');
+      return;
+    }
+
+    // Set loading state
+    setState(() {
+      _isDeleting = true;
+    });
+
+    try {
+      final recipeId = widget.recipe['id']?.toString() ?? '';
+      
+      if (recipeId.isEmpty) {
+        throw Exception('Recipe ID is empty');
+      }
+
+      print('🗑️ Deleting recipe with ID: $recipeId');
+      
+      // Call the delete service
+      final success = await _recipeService.deleteRecipe(recipeId);
+
+      if (success) {
+        print('✅ Recipe deleted successfully');
+        
+        if (mounted) {
+          // Show success message
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Recipe deleted successfully!'),
+              backgroundColor: Color(0xFFFF5B9E),
+              duration: Duration(seconds: 2),
+            ),
+          );
+
+          // Return to previous page with delete result
+          Navigator.of(context).pop({'deleted': true, 'recipeId': recipeId});
+        }
+      } else {
+        print('❌ Failed to delete recipe');
+        
+        setState(() {
+          _isDeleting = false;
+        });
+        
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Failed to delete recipe. Please try again.'),
+              backgroundColor: Colors.red,
+              duration: Duration(seconds: 3),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      print('❌ Error deleting recipe: $e');
+      
+      setState(() {
+        _isDeleting = false;
+      });
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error deleting recipe: $e'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    }
   }
 }
