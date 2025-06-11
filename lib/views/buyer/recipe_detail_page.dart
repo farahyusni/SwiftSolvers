@@ -1,7 +1,8 @@
+// lib/views/buyer/recipe_detail_page.dart (Fixed - Uses Provider from main.dart)
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../services/favourites_services.dart';
-import '../../viewmodels/cart_viewmodel.dart';
+import '../../viewmodels/cart_viewmodel.dart'; // Import CartViewModel
 
 class RecipeDetailPage extends StatefulWidget {
   final Map<String, dynamic> recipe;
@@ -59,7 +60,7 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
       }
     } else {
       print('❌ No recipe ID found in recipe data');
-      print('❌ Full recipe data: $widget.recipe');
+      print('❌ Full recipe data: ${widget.recipe}');
     }
   }
 
@@ -116,15 +117,15 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
 
   Future<void> _addToCart() async {
     print('🛒 Add to cart button pressed');
-    
+
     setState(() {
       _isAddingToCart = true;
     });
 
     try {
-      // Create a cart view model to handle the operation
-      final cartViewModel = CartViewModel();
-      
+      // Use the CartViewModel from main.dart providers
+      final cartViewModel = Provider.of<CartViewModel>(context, listen: false);
+
       final success = await cartViewModel.addIngredientsToCart(
         recipe: widget.recipe,
         checkedIngredients: _checkedIngredients,
@@ -138,7 +139,7 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
         if (success) {
           // Count unchecked ingredients
           final uncheckedCount = _checkedIngredients.where((checked) => !checked).length;
-          
+
           if (uncheckedCount > 0) {
             // Show success message with option to view cart
             ScaffoldMessenger.of(context).showSnackBar(
@@ -178,12 +179,12 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
       }
     } catch (e) {
       print('❌ Error adding to cart: $e');
-      
+
       if (mounted) {
         setState(() {
           _isAddingToCart = false;
         });
-        
+
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('An error occurred. Please try again.'),
@@ -499,7 +500,7 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
 
   Widget _buildAddToCartButton(BuildContext context) {
     final uncheckedCount = _checkedIngredients.where((checked) => !checked).length;
-    
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Column(
@@ -535,7 +536,7 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
                 ],
               ),
             ),
-          
+
           SizedBox(
             width: double.infinity,
             child: ElevatedButton(
@@ -551,32 +552,32 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
               ),
               child: _isAddingToCart
                   ? const SizedBox(
-                      height: 20,
-                      width: 20,
-                      child: CircularProgressIndicator(
-                        color: Colors.white,
-                        strokeWidth: 2,
-                      ),
-                    )
+                height: 20,
+                width: 20,
+                child: CircularProgressIndicator(
+                  color: Colors.white,
+                  strokeWidth: 2,
+                ),
+              )
                   : Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(
-                          Icons.shopping_cart,
-                          size: 20,
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          uncheckedCount > 0
-                              ? 'Add $uncheckedCount ingredients to cart'
-                              : 'Add to cart',
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(
+                    Icons.shopping_cart,
+                    size: 20,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    uncheckedCount > 0
+                        ? 'Add $uncheckedCount ingredients to cart'
+                        : 'Add to cart',
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
                     ),
+                  ),
+                ],
+              ),
             ),
           ),
         ],
