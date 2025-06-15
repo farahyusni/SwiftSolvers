@@ -1,8 +1,10 @@
 // lib/services/recipe_service.dart
 import 'package:cloud_firestore/cloud_firestore.dart';
+import './inventory_service.dart'; // Import the inventory service
 
 class RecipeService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final InventoryService _inventoryService = InventoryService(); // Add inventory service
 
   // Initialize the database with sample data (call this ONCE)
   Future<void> initializeDatabase() async {
@@ -18,6 +20,9 @@ class RecipeService {
       // Create sample recipes
       await _createSampleRecipes();
 
+      // Initialize inventory/stocks data
+      await _inventoryService.initializeDatabase();
+
       print('✅ Database initialization completed successfully!');
     } catch (e) {
       print('❌ Error initializing database: $e');
@@ -28,6 +33,13 @@ class RecipeService {
   // Private method to create categories
   Future<void> _createCategories() async {
     try {
+      // Check if categories already exist
+      final existingCategories = await _firestore.collection('categories').limit(1).get();
+      if (existingCategories.docs.isNotEmpty) {
+        print('✅ Categories already exist, skipping creation');
+        return;
+      }
+
       await _firestore.collection('categories').doc('quick_meals').set({
         'id': 'quick_meals',
         'name': 'Quick Meals',
@@ -66,6 +78,13 @@ class RecipeService {
   // Private method to create stores
   Future<void> _createStores() async {
     try {
+      // Check if stores already exist
+      final existingStores = await _firestore.collection('stores').limit(1).get();
+      if (existingStores.docs.isNotEmpty) {
+        print('✅ Stores already exist, skipping creation');
+        return;
+      }
+
       await _firestore.collection('stores').doc('tesco').set({
         'id': 'tesco',
         'name': 'Tesco',
@@ -100,6 +119,13 @@ class RecipeService {
   // Private method to create sample recipes
   Future<void> _createSampleRecipes() async {
     try {
+      // Check if recipes already exist
+      final existingRecipes = await _firestore.collection('recipes').limit(1).get();
+      if (existingRecipes.docs.isNotEmpty) {
+        print('✅ Recipes already exist, skipping creation');
+        return;
+      }
+
       // Recipe 1: Hokkien Mee
       await _firestore.collection('recipes').add({
         'name': 'Hokkien Mee',
@@ -495,7 +521,6 @@ class RecipeService {
     }
   }
 
-  // Replace your updateRecipe method in recipe_service.dart
   Future<bool> updateRecipe(
     String recipeId,
     Map<String, dynamic> updatedData,
@@ -520,7 +545,6 @@ class RecipeService {
     }
   }
 
-  // Replace your createRecipe method in recipe_service.dart
   Future<Map<String, dynamic>?> createRecipe(
     Map<String, dynamic> recipeData,
   ) async {
