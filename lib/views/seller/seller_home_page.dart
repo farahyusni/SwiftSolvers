@@ -7,6 +7,7 @@ import '../../services/recipe_service.dart';
 import '../../services/stock_service.dart';  // adjust path if needed
 import 'edit_stock_item_page.dart';
 import '../../services/stock_service.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 
 class SellerHomePage extends StatefulWidget {
@@ -253,6 +254,21 @@ bool _isStockLoading = true;
     }
   }
 
+
+Future<double> _getTotalSales() async {
+    double total = 0.0;
+    final snapshot = await FirebaseFirestore.instance.collection('orders').get();
+
+    for (var doc in snapshot.docs) {
+      final data = doc.data();
+      if (data['status'] == 'paid') {
+        total += (data['totalAmount'] ?? 0).toDouble();
+      }
+    }
+    return total;
+  }
+
+
   Widget _buildQuickStats() {
   return Expanded(
     child: SingleChildScrollView(
@@ -269,58 +285,73 @@ bool _isStockLoading = true;
           ),
           const SizedBox(height: 30),
 
+
+
           // Total Sales Card
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(20),
-            margin: const EdgeInsets.only(bottom: 20),
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.8),
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
-                  blurRadius: 10,
-                  offset: const Offset(0, 2),
-                ),
-              ],
+         // Total Sales Card - with FutureBuilder
+            FutureBuilder<double>(
+              future: _getTotalSales(),
+              builder: (context, snapshot) {
+                final totalText = snapshot.connectionState == ConnectionState.waiting
+                    ? '...'
+                    : snapshot.hasData
+                        ? 'RM ${snapshot.data!.toStringAsFixed(2)}'
+                        : 'RM 0.00';
+
+                         return Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(20),
+                  margin: const EdgeInsets.only(bottom: 20),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.8),
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.05),
+                        blurRadius: 10,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                   child: Column(
+                    children: [
+                      Container(
+                        width: 50,
+                        height: 50,
+                        decoration: const BoxDecoration(
+                          color: Color(0xFFFF5B9E),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.attach_money,
+                          color: Colors.white,
+                          size: 28,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        totalText,
+                        style: const TextStyle(
+                          fontSize: 32,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      const Text(
+                        'Total Sales',
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: Color(0xFF8B8B8B),
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
             ),
-            child: Column(
-              children: [
-                Container(
-                  width: 50,
-                  height: 50,
-                  decoration: const BoxDecoration(
-                    color: Color(0xFFFF5B9E),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.attach_money,
-                    color: Colors.white,
-                    size: 28,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                const Text(
-                  '-',
-                  style: TextStyle(
-                    fontSize: 32,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                const Text(
-                  'Total Sales',
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: Color(0xFF8B8B8B),
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
-            ),
-          ),
+
 
           // Number of Recipes Card - Updated to show actual count
           Container(
