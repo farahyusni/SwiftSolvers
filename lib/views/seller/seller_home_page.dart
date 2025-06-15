@@ -4,6 +4,10 @@ import 'seller_profile_page.dart';
 import 'seller_recipe_detail_page.dart';
 import 'edit_recipe_page.dart';
 import '../../services/recipe_service.dart';
+import '../../services/stock_service.dart';  // adjust path if needed
+import 'edit_stock_item_page.dart';
+import '../../services/stock_service.dart';
+
 
 class SellerHomePage extends StatefulWidget {
   const SellerHomePage({Key? key}) : super(key: key);
@@ -16,10 +20,18 @@ class _SellerHomePageState extends State<SellerHomePage> {
   int _selectedBottomNavIndex = 0;
   final TextEditingController _searchController = TextEditingController();
   final RecipeService _recipeService = RecipeService(); // Add this line
+  
 
   List<Map<String, dynamic>> recipes = [];
   List<Map<String, dynamic>> filteredRecipes = [];
   bool _isLoading = true; // Add loading state
+
+final StockService _stockService = StockService(); // <-- Firestore service
+
+List<Map<String, dynamic>> stocks = [];
+List<Map<String, dynamic>> filteredStocks = [];
+final TextEditingController _stockSearchController = TextEditingController();
+bool _isStockLoading = true;
 
   @override
   void initState() {
@@ -27,12 +39,28 @@ class _SellerHomePageState extends State<SellerHomePage> {
     _searchController.addListener(_filterSearchResults);
     _debugDatabase();
     _loadRecipes(); // Load recipes from database
+      _loadStocks();
   }
 
   @override
   void dispose() {
     _searchController.dispose();
     super.dispose();
+  }
+
+   Future<void> _loadStocks() async {
+    print('📦 Loading stocks from Firestore...');
+    setState(() => _isStockLoading = true);
+    try {
+      final fetchedStocks = await _stockService.getAllStocks();
+      setState(() {
+        stocks = fetchedStocks;
+        filteredStocks = fetchedStocks;
+        _isStockLoading = false;
+      });
+    } catch (e) {
+      setState(() => _isStockLoading = false);
+    }
   }
 
   Future<void> _loadRecipes() async {
@@ -226,213 +254,445 @@ class _SellerHomePageState extends State<SellerHomePage> {
   }
 
   Widget _buildQuickStats() {
+  return Expanded(
+    child: SingleChildScrollView(
+      padding: const EdgeInsets.all(20.0),
+      child: Column(
+        children: [
+          const Text(
+            'Quick Stats',
+            style: TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF8B8B8B),
+            ),
+          ),
+          const SizedBox(height: 30),
+
+          // Total Sales Card
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(20),
+            margin: const EdgeInsets.only(bottom: 20),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.8),
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.05),
+                  blurRadius: 10,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Column(
+              children: [
+                Container(
+                  width: 50,
+                  height: 50,
+                  decoration: const BoxDecoration(
+                    color: Color(0xFFFF5B9E),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.attach_money,
+                    color: Colors.white,
+                    size: 28,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                const Text(
+                  '-',
+                  style: TextStyle(
+                    fontSize: 32,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'Total Sales',
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: Color(0xFF8B8B8B),
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // Number of Recipes Card - Updated to show actual count
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(20),
+            margin: const EdgeInsets.only(bottom: 20),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.8),
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.05),
+                  blurRadius: 10,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Column(
+              children: [
+                Container(
+                  width: 50,
+                  height: 50,
+                  decoration: const BoxDecoration(
+                    color: Color(0xFFFF8C42),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.receipt_long,
+                    color: Colors.white,
+                    size: 28,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  '${recipes.length}', // Changed from '-' to actual recipe count
+                  style: const TextStyle(
+                    fontSize: 32,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'Number of Recipes',
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: Color(0xFF8B8B8B),
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // Pending Orders Card
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.8),
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.05),
+                  blurRadius: 10,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Column(
+              children: [
+                Container(
+                  width: 50,
+                  height: 50,
+                  decoration: const BoxDecoration(
+                    color: Color(0xFF4CAF50),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.pending_actions,
+                    color: Colors.white,
+                    size: 28,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                const Text(
+                  '-',
+                  style: TextStyle(
+                    fontSize: 32,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'Pending Orders',
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: Color(0xFF8B8B8B),
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
+ Widget _buildStocksContent() {
+    if (_isStockLoading) {
+      return const Expanded(
+        child: Center(child: CircularProgressIndicator(color: Color(0xFFFF5B9E))),
+      );
+    }
+
     return Expanded(
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.all(20.0),
-        child: Column(
-          children: [
-            const Text(
-              'Quick Stats',
-              style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.w600,
-                color: Color(0xFF8B8B8B),
-              ),
-            ),
-            const SizedBox(height: 30),
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(20.0),
+            child: Column(
+              children: [
+                const Text(
+                  'Inventory Management',
+                  style: TextStyle(fontSize: 24, fontWeight: FontWeight.w600, color: Color(0xFF8B8B8B)),
+                ),
+                const SizedBox(height: 20),
+                Container(
+                  height: 50,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.7),
+                    borderRadius: BorderRadius.circular(25),
+                  ),
+                  child: Row(
+                    children: [
+                      const SizedBox(width: 20),
+                      const Icon(Icons.menu, color: Colors.grey, size: 22),
+                      const SizedBox(width: 15),
+                      Expanded(
+                        child: TextField(
+                          decoration: const InputDecoration(
+                            hintText: 'Search Stock',
+                            border: InputBorder.none,
+                            hintStyle: TextStyle(color: Colors.grey, fontSize: 16),
+                          ),
+                          onChanged: (value) {
+                            setState(() {
+                              filteredStocks = stocks.where((stock) {
+                                final name = stock['name']?.toString().toLowerCase() ?? '';
+                                return name.contains(value.toLowerCase());
+                              }).toList();
+                            });
+                          },
+                        ),
+                      ),
+                      GestureDetector(
+  onTap: () async {
+    final newItem = {
+      'id': '',
+      'name': '',
+      'price': 0.0,
+      'stock': 0,
+      'unit': '',
+      'category': '',
+    };
 
-            // Total Sales Card
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(20),
-              margin: const EdgeInsets.only(bottom: 20),
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.8),
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
-                    blurRadius: 10,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: Column(
-                children: [
-                  Container(
-                    width: 50,
-                    height: 50,
-                    decoration: const BoxDecoration(
-                      color: Color(0xFFFF5B9E),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(
-                      Icons.attach_money,
-                      color: Colors.white,
-                      size: 28,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  const Text(
-                    '-',
-                    style: TextStyle(
-                      fontSize: 32,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'Total Sales',
-                    style: TextStyle(
-                      fontSize: 16,
-                      color: Color(0xFF8B8B8B),
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ],
-              ),
-            ),
+    final result = await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => EditStockItemPage(item: newItem),
+      ),
+    );
 
-            // Number of Recipes Card
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(20),
-              margin: const EdgeInsets.only(bottom: 20),
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.8),
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
-                    blurRadius: 10,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: Column(
-                children: [
-                  Container(
-                    width: 50,
-                    height: 50,
-                    decoration: const BoxDecoration(
-                      color: Color(0xFFFF8C42),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(
-                      Icons.receipt_long,
-                      color: Colors.white,
-                      size: 28,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  const Text(
-                    '-',
-                    style: TextStyle(
-                      fontSize: 32,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'Number of Recipes',
-                    style: TextStyle(
-                      fontSize: 16,
-                      color: Color(0xFF8B8B8B),
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ],
-              ),
-            ),
+    if (result == true) {
+      await _loadStocks();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('New stock item added successfully!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    }
+  },
+  child: Container(
+    width: 40,
+    height: 40,
+    margin: const EdgeInsets.only(right: 5),
+    decoration: const BoxDecoration(
+      color: Colors.black,
+      shape: BoxShape.circle,
+    ),
+    child: const Icon(Icons.add, color: Colors.white, size: 24),
+  ),
+),
 
-            // Pending Orders Card
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.8),
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
-                    blurRadius: 10,
-                    offset: const Offset(0, 2),
+                    ],
                   ),
-                ],
-              ),
-              child: Column(
-                children: [
-                  Container(
-                    width: 50,
-                    height: 50,
-                    decoration: const BoxDecoration(
-                      color: Color(0xFF4CAF50),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(
-                      Icons.pending_actions,
-                      color: Colors.white,
-                      size: 28,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  const Text(
-                    '-',
-                    style: TextStyle(
-                      fontSize: 32,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'Pending Orders',
-                    style: TextStyle(
-                      fontSize: 16,
-                      color: Color(0xFF8B8B8B),
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ],
-              ),
+                ),
+              ],
             ),
-          ],
-        ),
+          ),
+          Expanded(
+            child: ListView.builder(
+              padding: const EdgeInsets.symmetric(horizontal: 20.0),
+              itemCount: filteredStocks.length,
+              itemBuilder: (context, index) {
+                final item = filteredStocks[index];
+                return Container(
+                  margin: const EdgeInsets.only(bottom: 16),
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.8),
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.05),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 80,
+                        height: 80,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(8),
+                          color: Colors.grey[300],
+                          border: Border.all(color: Colors.grey[400]!, width: 1),
+                        ),
+                        child: const Icon(Icons.image_not_supported, size: 40, color: Colors.grey),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              item['name'] ?? '-',
+                              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: Colors.black),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              'RM${(item['price'] ?? 0).toStringAsFixed(2)} ${item['unit'] ?? ''}',
+                              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: Color(0xFF8B8B8B)),
+                            ),
+                            const SizedBox(height: 4),
+                            Text('Available: ${item['stock']}', style: const TextStyle(fontSize: 14, color: Color(0xFF8B8B8B))),
+                            const SizedBox(height: 4),
+                            Text('Category: ${item['category'] ?? '-'}', style: const TextStyle(fontSize: 14, color: Color(0xFF8B8B8B))),
+                          ],
+                        ),
+                      ),
+                         Column(
+                        children: [
+                          Row(
+                            children: [
+                              GestureDetector(
+                                onTap: () async {
+                                  final updated = await Navigator.of(context).push(
+                                    MaterialPageRoute(
+                                      builder: (context) => EditStockItemPage(item: item),
+                                    ),
+                                  );
+                                  if (updated == true) {
+                                    await _loadStocks();
+                                  }
+                                },
+                                child: Container(
+                                  width: 40,
+                                  height: 40,
+                                  decoration: BoxDecoration(color: Colors.grey[200], borderRadius: BorderRadius.circular(8)),
+                                  child: const Icon(Icons.edit, size: 20, color: Colors.black),
+                                ),
+                              ),
+                             
+                                const SizedBox(width: 8),
+                              GestureDetector(
+  onTap: () async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Stock Item'),
+        content: Text('Are you sure you want to delete "${item['name']}"?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+          ElevatedButton(onPressed: () => Navigator.pop(context, true), child: const Text('Delete')),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      try {
+        await _stockService.deleteStock(item['id']);
+        await _loadStocks();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Stock deleted successfully'), backgroundColor: Colors.green),
+        );
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to delete stock: \$e'), backgroundColor: Colors.red),
+        );
+      }
+    }
+  },
+  child: Container(
+    width: 40,
+    height: 40,
+    decoration: BoxDecoration(color: Colors.grey[200], borderRadius: BorderRadius.circular(8)),
+    child: const Icon(Icons.delete_outline, size: 20, color: Colors.black),
+  ),
+),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          if ((item['stock'] ?? 0) < 50)
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                              decoration: BoxDecoration(color: Colors.red, borderRadius: BorderRadius.circular(12)),
+                              child: const Text('LOW', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
+                            ),
+                        ],
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
       ),
     );
   }
 
   Widget _buildOrdersContent() {
-    return const Expanded(
-      child: Center(
-        child: Text(
-          'Orders Content',
-          style: TextStyle(
-            fontSize: 24,
-            fontWeight: FontWeight.w600,
+  return const Expanded(
+    child: Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.shopping_bag_outlined,
+            size: 64,
             color: Color(0xFF8B8B8B),
           ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildStocksContent() {
-    return const Expanded(
-      child: Center(
-        child: Text(
-          'Stocks Content',
-          style: TextStyle(
-            fontSize: 24,
-            fontWeight: FontWeight.w600,
-            color: Color(0xFF8B8B8B),
+          SizedBox(height: 16),
+          Text(
+            'Orders Management',
+            style: TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF8B8B8B),
+            ),
           ),
-        ),
+          SizedBox(height: 8),
+          Text(
+            'Coming Soon',
+            style: TextStyle(
+              fontSize: 16,
+              color: Color(0xFF8B8B8B),
+            ),
+          ),
+        ],
       ),
-    );
-  }
+    ),
+  );
+}
 
   @override
   Widget build(BuildContext context) {
@@ -557,36 +817,68 @@ class _SellerHomePageState extends State<SellerHomePage> {
   }
 
   Widget _buildSearchBar() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 10.0),
-      child: Container(
-        height: 50,
-        decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.7),
-          borderRadius: BorderRadius.circular(25),
-        ),
-        child: Row(
-          children: [
-            SizedBox(width: 20),
-            Icon(Icons.menu, color: Colors.grey, size: 22),
-            SizedBox(width: 15),
-            Expanded(
-              child: TextField(
-                controller: _searchController,
-                decoration: const InputDecoration(
-                  hintText: 'Search your recipe',
-                  border: InputBorder.none,
-                  hintStyle: TextStyle(color: Colors.grey, fontSize: 16),
-                ),
-              ),
+  return Padding(
+    padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 10.0),
+    child: Row(
+      children: [
+        Expanded(
+          child: Container(
+            height: 50,
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.7),
+              borderRadius: BorderRadius.circular(25),
             ),
-            Icon(Icons.search, color: Colors.grey, size: 22),
-            SizedBox(width: 15),
-          ],
+            child: Row(
+              children: [
+                const SizedBox(width: 20),
+                const Icon(Icons.menu, color: Colors.grey, size: 22),
+                const SizedBox(width: 15),
+                Expanded(
+                  child: TextField(
+                    controller: _searchController,
+                    decoration: const InputDecoration(
+                      hintText: 'Search your recipe',
+                      border: InputBorder.none,
+                      hintStyle: TextStyle(color: Colors.grey, fontSize: 16),
+                    ),
+                  ),
+                ),
+                const Icon(Icons.search, color: Colors.grey, size: 22),
+                const SizedBox(width: 15),
+              ],
+            ),
+          ),
         ),
-      ),
-    );
-  }
+        const SizedBox(width: 10),
+        // ➕ Add Stocks Icon Button here
+        Container(
+          width: 50,
+          height: 50,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(25),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.1),
+                blurRadius: 5,
+              ),
+            ],
+          ),
+          child: IconButton(
+            icon: const Icon(Icons.inventory_2_outlined, color: Colors.black),
+            onPressed: () {
+              print('📦 Navigating to Stocks tab...');
+              setState(() {
+                _selectedBottomNavIndex = 2; // Go to Stocks
+              });
+            },
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
 
   Widget _buildFoodGrid() {
     if (_isLoading) {
