@@ -25,9 +25,9 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
     super.initState();
     print('🚀 RecipeDetailPage initState started');
 
-    // Initialize all ingredients as unchecked
+    // Initialize All ingredients start checked (customer has them)
     final ingredients = widget.recipe['ingredients'] as List<dynamic>? ?? [];
-    _checkedIngredients = List.filled(ingredients.length, false);
+    _checkedIngredients = List.filled(ingredients.length, true);
 
     // Debug: Print the entire recipe data
     print('📦 Recipe data keys: ${widget.recipe.keys.toList()}');
@@ -126,9 +126,12 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
       // Use the CartViewModel from main.dart providers
       final cartViewModel = Provider.of<CartViewModel>(context, listen: false);
 
+      // Create inverted list for cart logic (unchecked ingredients need to be bought)
+      List<bool> needToBuy = _checkedIngredients.map((checked) => !checked).toList();
+
       final success = await cartViewModel.addIngredientsToCart(
         recipe: widget.recipe,
-        checkedIngredients: _checkedIngredients,
+        checkedIngredients: needToBuy, // Pass inverted logic
       );
 
       if (mounted) {
@@ -138,13 +141,13 @@ class _RecipeDetailPageState extends State<RecipeDetailPage> {
 
         if (success) {
           // Count unchecked ingredients
-          final uncheckedCount = _checkedIngredients.where((checked) => !checked).length;
+          final needToBuyCount = _checkedIngredients.where((checked) => !checked).length;
 
-          if (uncheckedCount > 0) {
+          if (needToBuyCount > 0) {
             // Show success message with option to view cart
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text('$uncheckedCount ingredients added to cart!'),
+                content: Text('$needToBuyCount ingredients added to cart!'),
                 backgroundColor: const Color(0xFFFF5B9E),
                 duration: const Duration(seconds: 3),
                 action: SnackBarAction(
