@@ -4,11 +4,10 @@ import 'seller_profile_page.dart';
 import 'seller_recipe_detail_page.dart';
 import 'edit_recipe_page.dart';
 import '../../services/recipe_service.dart';
-import '../../services/stock_service.dart';  // adjust path if needed
+import '../../services/stock_service.dart'; // adjust path if needed
 import 'edit_stock_item_page.dart';
 import '../../services/stock_service.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-
 
 class SellerHomePage extends StatefulWidget {
   const SellerHomePage({Key? key}) : super(key: key);
@@ -21,18 +20,34 @@ class _SellerHomePageState extends State<SellerHomePage> {
   int _selectedBottomNavIndex = 0;
   final TextEditingController _searchController = TextEditingController();
   final RecipeService _recipeService = RecipeService(); // Add this line
-  
 
   List<Map<String, dynamic>> recipes = [];
   List<Map<String, dynamic>> filteredRecipes = [];
   bool _isLoading = true; // Add loading state
 
-final StockService _stockService = StockService(); // <-- Firestore service
+  final StockService _stockService = StockService(); // <-- Firestore service
 
-List<Map<String, dynamic>> stocks = [];
-List<Map<String, dynamic>> filteredStocks = [];
-final TextEditingController _stockSearchController = TextEditingController();
-bool _isStockLoading = true;
+  List<Map<String, dynamic>> stocks = [];
+  List<Map<String, dynamic>> filteredStocks = [];
+  final TextEditingController _stockSearchController = TextEditingController();
+  bool _isStockLoading = true;
+
+  // Add these new variables for filtering
+  String _selectedStockCategory = 'All';
+  bool _showCategoryFilter = false;
+  final List<String> _stockCategories = [
+    'All',
+    'Grains',
+    'Vegetables',
+    'Fruits',
+    'Protein',
+    'Dairy',
+    'Condiments',
+    'Spices',
+    'Beverages',
+    'Snacks',
+    'Others',
+  ];
 
   @override
   void initState() {
@@ -40,7 +55,7 @@ bool _isStockLoading = true;
     _searchController.addListener(_filterSearchResults);
     _debugDatabase();
     _loadRecipes(); // Load recipes from database
-      _loadStocks();
+    _loadStocks();
   }
 
   @override
@@ -49,7 +64,7 @@ bool _isStockLoading = true;
     super.dispose();
   }
 
-   Future<void> _loadStocks() async {
+  Future<void> _loadStocks() async {
     print('📦 Loading stocks from Firestore...');
     setState(() => _isStockLoading = true);
     try {
@@ -254,10 +269,10 @@ bool _isStockLoading = true;
     }
   }
 
-
-Future<double> _getTotalSales() async {
+  Future<double> _getTotalSales() async {
     double total = 0.0;
-    final snapshot = await FirebaseFirestore.instance.collection('orders').get();
+    final snapshot =
+        await FirebaseFirestore.instance.collection('orders').get();
 
     for (var doc in snapshot.docs) {
       final data = doc.data();
@@ -268,37 +283,35 @@ Future<double> _getTotalSales() async {
     return total;
   }
 
-
   Widget _buildQuickStats() {
-  return Expanded(
-    child: SingleChildScrollView(
-      padding: const EdgeInsets.all(20.0),
-      child: Column(
-        children: [
-          const Text(
-            'Quick Stats',
-            style: TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.w600,
-              color: Color(0xFF8B8B8B),
+    return Expanded(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(20.0),
+        child: Column(
+          children: [
+            const Text(
+              'Quick Stats',
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF8B8B8B),
+              ),
             ),
-          ),
-          const SizedBox(height: 30),
+            const SizedBox(height: 30),
 
-
-
-          // Total Sales Card
-         // Total Sales Card - with FutureBuilder
+            // Total Sales Card
+            // Total Sales Card - with FutureBuilder
             FutureBuilder<double>(
               future: _getTotalSales(),
               builder: (context, snapshot) {
-                final totalText = snapshot.connectionState == ConnectionState.waiting
-                    ? '...'
-                    : snapshot.hasData
+                final totalText =
+                    snapshot.connectionState == ConnectionState.waiting
+                        ? '...'
+                        : snapshot.hasData
                         ? 'RM ${snapshot.data!.toStringAsFixed(2)}'
                         : 'RM 0.00';
 
-                         return Container(
+                return Container(
                   width: double.infinity,
                   padding: const EdgeInsets.all(20),
                   margin: const EdgeInsets.only(bottom: 20),
@@ -313,7 +326,7 @@ Future<double> _getTotalSales() async {
                       ),
                     ],
                   ),
-                   child: Column(
+                  child: Column(
                     children: [
                       Container(
                         width: 50,
@@ -352,123 +365,143 @@ Future<double> _getTotalSales() async {
               },
             ),
 
+            // Number of Recipes Card - Updated to show actual count
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(20),
+              margin: const EdgeInsets.only(bottom: 20),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.8),
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.05),
+                    blurRadius: 10,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Column(
+                children: [
+                  Container(
+                    width: 50,
+                    height: 50,
+                    decoration: const BoxDecoration(
+                      color: Color(0xFFFF8C42),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.receipt_long,
+                      color: Colors.white,
+                      size: 28,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    '${recipes.length}', // Changed from '-' to actual recipe count
+                    style: const TextStyle(
+                      fontSize: 32,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Number of Recipes',
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: Color(0xFF8B8B8B),
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+            ),
 
-          // Number of Recipes Card - Updated to show actual count
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(20),
-            margin: const EdgeInsets.only(bottom: 20),
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.8),
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
-                  blurRadius: 10,
-                  offset: const Offset(0, 2),
-                ),
-              ],
+            // Pending Orders Card
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.8),
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.05),
+                    blurRadius: 10,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Column(
+                children: [
+                  Container(
+                    width: 50,
+                    height: 50,
+                    decoration: const BoxDecoration(
+                      color: Color(0xFF4CAF50),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.pending_actions,
+                      color: Colors.white,
+                      size: 28,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    '-',
+                    style: TextStyle(
+                      fontSize: 32,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Pending Orders',
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: Color(0xFF8B8B8B),
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
             ),
-            child: Column(
-              children: [
-                Container(
-                  width: 50,
-                  height: 50,
-                  decoration: const BoxDecoration(
-                    color: Color(0xFFFF8C42),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.receipt_long,
-                    color: Colors.white,
-                    size: 28,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  '${recipes.length}', // Changed from '-' to actual recipe count
-                  style: const TextStyle(
-                    fontSize: 32,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                const Text(
-                  'Number of Recipes',
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: Color(0xFF8B8B8B),
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          // Pending Orders Card
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.8),
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
-                  blurRadius: 10,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            child: Column(
-              children: [
-                Container(
-                  width: 50,
-                  height: 50,
-                  decoration: const BoxDecoration(
-                    color: Color(0xFF4CAF50),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.pending_actions,
-                    color: Colors.white,
-                    size: 28,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                const Text(
-                  '-',
-                  style: TextStyle(
-                    fontSize: 32,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                const Text(
-                  'Pending Orders',
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: Color(0xFF8B8B8B),
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
-    ),
-  );
-}
+    );
+  }
 
- Widget _buildStocksContent() {
+  Widget _buildStocksContent() {
     if (_isStockLoading) {
       return const Expanded(
-        child: Center(child: CircularProgressIndicator(color: Color(0xFFFF5B9E))),
+        child: Center(
+          child: CircularProgressIndicator(color: Color(0xFFFF5B9E)),
+        ),
       );
     }
+
+    // Filter stocks based on selected category and search text
+    List<Map<String, dynamic>> displayedStocks =
+        stocks.where((stock) {
+          final name = stock['name']?.toString().toLowerCase() ?? '';
+          final category = stock['category']?.toString() ?? '';
+
+          // Check search text
+          bool matchesSearch =
+              name.isEmpty ||
+              name.contains(_stockSearchController.text.toLowerCase());
+
+          // Check category filter
+          bool matchesCategory =
+              _selectedStockCategory == 'All' ||
+              category == _selectedStockCategory;
+
+          return matchesSearch && matchesCategory;
+        }).toList();
 
     return Expanded(
       child: Column(
@@ -479,9 +512,15 @@ Future<double> _getTotalSales() async {
               children: [
                 const Text(
                   'Inventory Management',
-                  style: TextStyle(fontSize: 24, fontWeight: FontWeight.w600, color: Color(0xFF8B8B8B)),
+                  style: TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF8B8B8B),
+                  ),
                 ),
                 const SizedBox(height: 20),
+
+                // Search bar with filter dropdown
                 Container(
                   height: 50,
                   decoration: BoxDecoration(
@@ -491,200 +530,593 @@ Future<double> _getTotalSales() async {
                   child: Row(
                     children: [
                       const SizedBox(width: 20),
-                      const Icon(Icons.menu, color: Colors.grey, size: 22),
+                      // Filter menu icon
+                      GestureDetector(
+                        onTap: () {
+                          setState(() {
+                            _showCategoryFilter = !_showCategoryFilter;
+                          });
+                        },
+                        child: Icon(
+                          _showCategoryFilter
+                              ? Icons.filter_list_off
+                              : Icons.menu,
+                          color:
+                              _selectedStockCategory != 'All'
+                                  ? const Color(0xFFFF5B9E)
+                                  : Colors.grey,
+                          size: 22,
+                        ),
+                      ),
                       const SizedBox(width: 15),
                       Expanded(
                         child: TextField(
+                          controller: _stockSearchController,
                           decoration: const InputDecoration(
                             hintText: 'Search Stock',
                             border: InputBorder.none,
-                            hintStyle: TextStyle(color: Colors.grey, fontSize: 16),
+                            hintStyle: TextStyle(
+                              color: Colors.grey,
+                              fontSize: 16,
+                            ),
                           ),
                           onChanged: (value) {
                             setState(() {
-                              filteredStocks = stocks.where((stock) {
-                                final name = stock['name']?.toString().toLowerCase() ?? '';
-                                return name.contains(value.toLowerCase());
-                              }).toList();
+                              // This will trigger rebuild and filter the list
                             });
                           },
                         ),
                       ),
                       GestureDetector(
-  onTap: () async {
-    final newItem = {
-      'id': '',
-      'name': '',
-      'price': 0.0,
-      'stock': 0,
-      'unit': '',
-      'category': '',
-    };
+                        onTap: () async {
+                          final newItem = {
+                            'id': '',
+                            'name': '',
+                            'price': 0.0,
+                            'stock': 0,
+                            'unit': '',
+                            'category': '',
+                            'imageUrl': '',
+                          };
 
-    final result = await Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (context) => EditStockItemPage(item: newItem),
-      ),
-    );
+                          final result = await Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder:
+                                  (context) => EditStockItemPage(item: newItem),
+                            ),
+                          );
 
-    if (result == true) {
-      await _loadStocks();
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('New stock item added successfully!'),
-            backgroundColor: Colors.green,
-          ),
-        );
-      }
-    }
-  },
-  child: Container(
-    width: 40,
-    height: 40,
-    margin: const EdgeInsets.only(right: 5),
-    decoration: const BoxDecoration(
-      color: Colors.black,
-      shape: BoxShape.circle,
-    ),
-    child: const Icon(Icons.add, color: Colors.white, size: 24),
-  ),
-),
-
+                          if (result == true) {
+                            await _loadStocks();
+                            if (mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text(
+                                    'New stock item added successfully!',
+                                  ),
+                                  backgroundColor: Colors.green,
+                                ),
+                              );
+                            }
+                          }
+                        },
+                        child: Container(
+                          width: 40,
+                          height: 40,
+                          margin: const EdgeInsets.only(right: 5),
+                          decoration: const BoxDecoration(
+                            color: Colors.black,
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.add,
+                            color: Colors.white,
+                            size: 24,
+                          ),
+                        ),
+                      ),
                     ],
                   ),
                 ),
+
+                // Category filter dropdown
+                if (_showCategoryFilter)
+                  Container(
+                    margin: const EdgeInsets.only(top: 10),
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.1),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Filter by Category',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.black,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children:
+                              _stockCategories.map((category) {
+                                final isSelected =
+                                    _selectedStockCategory == category;
+                                return GestureDetector(
+                                  onTap: () {
+                                    setState(() {
+                                      _selectedStockCategory = category;
+                                      _showCategoryFilter = false;
+                                    });
+                                  },
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 16,
+                                      vertical: 8,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color:
+                                          isSelected
+                                              ? const Color(0xFFFF5B9E)
+                                              : Colors.grey[200],
+                                      borderRadius: BorderRadius.circular(20),
+                                      border: Border.all(
+                                        color:
+                                            isSelected
+                                                ? const Color(0xFFFF5B9E)
+                                                : Colors.grey[300]!,
+                                      ),
+                                    ),
+                                    child: Text(
+                                      category,
+                                      style: TextStyle(
+                                        color:
+                                            isSelected
+                                                ? Colors.white
+                                                : Colors.black,
+                                        fontWeight:
+                                            isSelected
+                                                ? FontWeight.w600
+                                                : FontWeight.normal,
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              }).toList(),
+                        ),
+                      ],
+                    ),
+                  ),
               ],
             ),
           ),
-          Expanded(
-            child: ListView.builder(
-              padding: const EdgeInsets.symmetric(horizontal: 20.0),
-              itemCount: filteredStocks.length,
-              itemBuilder: (context, index) {
-                final item = filteredStocks[index];
-                return Container(
-                  margin: const EdgeInsets.only(bottom: 16),
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.8),
-                    borderRadius: BorderRadius.circular(12),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.05),
-                        blurRadius: 8,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 80,
-                        height: 80,
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(8),
-                          color: Colors.grey[300],
-                          border: Border.all(color: Colors.grey[400]!, width: 1),
-                        ),
-                        child: const Icon(Icons.image_not_supported, size: 40, color: Colors.grey),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              item['name'] ?? '-',
-                              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: Colors.black),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              'RM${(item['price'] ?? 0).toStringAsFixed(2)} ${item['unit'] ?? ''}',
-                              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: Color(0xFF8B8B8B)),
-                            ),
-                            const SizedBox(height: 4),
-                            Text('Available: ${item['stock']}', style: const TextStyle(fontSize: 14, color: Color(0xFF8B8B8B))),
-                            const SizedBox(height: 4),
-                            Text('Category: ${item['category'] ?? '-'}', style: const TextStyle(fontSize: 14, color: Color(0xFF8B8B8B))),
-                          ],
-                        ),
-                      ),
-                         Column(
-                        children: [
-                          Row(
-                            children: [
-                              GestureDetector(
-                                onTap: () async {
-                                  final updated = await Navigator.of(context).push(
-                                    MaterialPageRoute(
-                                      builder: (context) => EditStockItemPage(item: item),
-                                    ),
-                                  );
-                                  if (updated == true) {
-                                    await _loadStocks();
-                                  }
-                                },
-                                child: Container(
-                                  width: 40,
-                                  height: 40,
-                                  decoration: BoxDecoration(color: Colors.grey[200], borderRadius: BorderRadius.circular(8)),
-                                  child: const Icon(Icons.edit, size: 20, color: Colors.black),
-                                ),
-                              ),
-                             
-                                const SizedBox(width: 8),
-                              GestureDetector(
-  onTap: () async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Delete Stock Item'),
-        content: Text('Are you sure you want to delete "${item['name']}"?'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
-          ElevatedButton(onPressed: () => Navigator.pop(context, true), child: const Text('Delete')),
-        ],
-      ),
-    );
 
-    if (confirmed == true) {
-      try {
-        await _stockService.deleteStock(item['id']);
-        await _loadStocks();
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Stock deleted successfully'), backgroundColor: Colors.green),
-        );
-      } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to delete stock: \$e'), backgroundColor: Colors.red),
-        );
-      }
-    }
-  },
-  child: Container(
-    width: 40,
-    height: 40,
-    decoration: BoxDecoration(color: Colors.grey[200], borderRadius: BorderRadius.circular(8)),
-    child: const Icon(Icons.delete_outline, size: 20, color: Colors.black),
-  ),
-),
-                            ],
+          // Show current filter if not 'All'
+          if (_selectedStockCategory != 'All')
+            Container(
+              margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFF5B9E).withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: const Color(0xFFFF5B9E)),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          'Category: $_selectedStockCategory',
+                          style: const TextStyle(
+                            color: Color(0xFFFF5B9E),
+                            fontWeight: FontWeight.w500,
+                            fontSize: 12,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        GestureDetector(
+                          onTap: () {
+                            setState(() {
+                              _selectedStockCategory = 'All';
+                            });
+                          },
+                          child: const Icon(
+                            Icons.close,
+                            color: Color(0xFFFF5B9E),
+                            size: 16,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Spacer(),
+                  Text(
+                    '${displayedStocks.length} items',
+                    style: const TextStyle(
+                      color: Color(0xFF8B8B8B),
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+          // Stock list
+          Expanded(
+            child:
+                displayedStocks.isEmpty
+                    ? Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.inventory_2_outlined,
+                            size: 64,
+                            color: Colors.grey[400],
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            _selectedStockCategory == 'All' &&
+                                    _stockSearchController.text.isEmpty
+                                ? 'No stock items available'
+                                : 'No items found',
+                            style: const TextStyle(
+                              fontSize: 18,
+                              color: Color(0xFF8B8B8B),
+                              fontWeight: FontWeight.w500,
+                            ),
                           ),
                           const SizedBox(height: 8),
-                          if ((item['stock'] ?? 0) < 50)
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                              decoration: BoxDecoration(color: Colors.red, borderRadius: BorderRadius.circular(12)),
-                              child: const Text('LOW', style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
+                          Text(
+                            _selectedStockCategory == 'All' &&
+                                    _stockSearchController.text.isEmpty
+                                ? 'Start by adding your first stock item!'
+                                : 'Try adjusting your search or filter',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Colors.grey[600],
                             ),
+                          ),
                         ],
                       ),
-                    ],
-                  ),
-                );
-              },
-            ),
+                    )
+                    : ListView.builder(
+                      padding: const EdgeInsets.symmetric(horizontal: 20.0),
+                      itemCount: displayedStocks.length,
+                      itemBuilder: (context, index) {
+                        final item = displayedStocks[index];
+                        return Container(
+                          margin: const EdgeInsets.only(bottom: 16),
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.8),
+                            borderRadius: BorderRadius.circular(12),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.05),
+                                blurRadius: 8,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: Row(
+                            children: [
+                              // Image container (keep your existing image code)
+                              Container(
+                                width: 80,
+                                height: 80,
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(8),
+                                  color: Colors.grey[300],
+                                  border: Border.all(
+                                    color: Colors.grey[400]!,
+                                    width: 1,
+                                  ),
+                                ),
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(8),
+                                  child:
+                                      (item['imageUrl'] != null &&
+                                              item['imageUrl']
+                                                  .toString()
+                                                  .isNotEmpty)
+                                          ? Image.network(
+                                            item['imageUrl'],
+                                            width: 80,
+                                            height: 80,
+                                            fit: BoxFit.cover,
+                                            loadingBuilder: (
+                                              context,
+                                              child,
+                                              loadingProgress,
+                                            ) {
+                                              if (loadingProgress == null)
+                                                return child;
+                                              return const Center(
+                                                child: SizedBox(
+                                                  width: 20,
+                                                  height: 20,
+                                                  child:
+                                                      CircularProgressIndicator(
+                                                        color: Color(
+                                                          0xFFFF5B9E,
+                                                        ),
+                                                        strokeWidth: 2,
+                                                      ),
+                                                ),
+                                              );
+                                            },
+                                            errorBuilder: (
+                                              context,
+                                              error,
+                                              stackTrace,
+                                            ) {
+                                              return Container(
+                                                width: 80,
+                                                height: 80,
+                                                color: Colors.grey[200],
+                                                child: const Column(
+                                                  mainAxisAlignment:
+                                                      MainAxisAlignment.center,
+                                                  children: [
+                                                    Icon(
+                                                      Icons.broken_image,
+                                                      size: 30,
+                                                      color: Colors.grey,
+                                                    ),
+                                                    Text(
+                                                      'Failed',
+                                                      style: TextStyle(
+                                                        fontSize: 10,
+                                                        color: Colors.grey,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              );
+                                            },
+                                          )
+                                          : Container(
+                                            width: 80,
+                                            height: 80,
+                                            color: Colors.grey[200],
+                                            child: const Column(
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment.center,
+                                              children: [
+                                                Icon(
+                                                  Icons.inventory_2,
+                                                  size: 30,
+                                                  color: Colors.grey,
+                                                ),
+                                                Text(
+                                                  'No Image',
+                                                  style: TextStyle(
+                                                    fontSize: 10,
+                                                    color: Colors.grey,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                ),
+                              ),
+                              const SizedBox(width: 16),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      item['name'] ?? '-',
+                                      style: const TextStyle(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.w600,
+                                        color: Colors.black,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      'RM${(item['price'] ?? 0).toStringAsFixed(2)} / ${item['unit'] ?? 'piece'}',
+                                      style: const TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w500,
+                                        color: Color(0xFF8B8B8B),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      'Available: ${item['stock']}',
+                                      style: const TextStyle(
+                                        fontSize: 14,
+                                        color: Color(0xFF8B8B8B),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      'Category: ${item['category'] ?? '-'}',
+                                      style: const TextStyle(
+                                        fontSize: 14,
+                                        color: Color(0xFF8B8B8B),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Column(
+                                children: [
+                                  Row(
+                                    children: [
+                                      GestureDetector(
+                                        onTap: () async {
+                                          final updated = await Navigator.of(
+                                            context,
+                                          ).push(
+                                            MaterialPageRoute(
+                                              builder:
+                                                  (context) =>
+                                                      EditStockItemPage(
+                                                        item: item,
+                                                      ),
+                                            ),
+                                          );
+                                          if (updated == true) {
+                                            await _loadStocks();
+                                          }
+                                        },
+                                        child: Container(
+                                          width: 40,
+                                          height: 40,
+                                          decoration: BoxDecoration(
+                                            color: Colors.grey[200],
+                                            borderRadius: BorderRadius.circular(
+                                              8,
+                                            ),
+                                          ),
+                                          child: const Icon(
+                                            Icons.edit,
+                                            size: 20,
+                                            color: Colors.black,
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      GestureDetector(
+                                        onTap: () async {
+                                          final confirmed = await showDialog<
+                                            bool
+                                          >(
+                                            context: context,
+                                            builder:
+                                                (context) => AlertDialog(
+                                                  title: const Text(
+                                                    'Delete Stock Item',
+                                                  ),
+                                                  content: Text(
+                                                    'Are you sure you want to delete "${item['name']}"?',
+                                                  ),
+                                                  actions: [
+                                                    TextButton(
+                                                      onPressed:
+                                                          () => Navigator.pop(
+                                                            context,
+                                                            false,
+                                                          ),
+                                                      child: const Text(
+                                                        'Cancel',
+                                                      ),
+                                                    ),
+                                                    ElevatedButton(
+                                                      onPressed:
+                                                          () => Navigator.pop(
+                                                            context,
+                                                            true,
+                                                          ),
+                                                      child: const Text(
+                                                        'Delete',
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                          );
+
+                                          if (confirmed == true) {
+                                            try {
+                                              await _stockService.deleteStock(
+                                                item['id'],
+                                              );
+                                              await _loadStocks();
+                                              if (mounted) {
+                                                ScaffoldMessenger.of(
+                                                  context,
+                                                ).showSnackBar(
+                                                  const SnackBar(
+                                                    content: Text(
+                                                      'Stock deleted successfully',
+                                                    ),
+                                                    backgroundColor:
+                                                        Colors.green,
+                                                  ),
+                                                );
+                                              }
+                                            } catch (e) {
+                                              if (mounted) {
+                                                ScaffoldMessenger.of(
+                                                  context,
+                                                ).showSnackBar(
+                                                  SnackBar(
+                                                    content: Text(
+                                                      'Failed to delete stock: $e',
+                                                    ),
+                                                    backgroundColor: Colors.red,
+                                                  ),
+                                                );
+                                              }
+                                            }
+                                          }
+                                        },
+                                        child: Container(
+                                          width: 40,
+                                          height: 40,
+                                          decoration: BoxDecoration(
+                                            color: Colors.grey[200],
+                                            borderRadius: BorderRadius.circular(
+                                              8,
+                                            ),
+                                          ),
+                                          child: const Icon(
+                                            Icons.delete_outline,
+                                            size: 20,
+                                            color: Colors.black,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 8),
+                                  if ((item['stock'] ?? 0) < 50)
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 12,
+                                        vertical: 4,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: Colors.red,
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      child: const Text(
+                                        'LOW',
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
           ),
         ],
       ),
@@ -692,38 +1124,35 @@ Future<double> _getTotalSales() async {
   }
 
   Widget _buildOrdersContent() {
-  return const Expanded(
-    child: Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            Icons.shopping_bag_outlined,
-            size: 64,
-            color: Color(0xFF8B8B8B),
-          ),
-          SizedBox(height: 16),
-          Text(
-            'Orders Management',
-            style: TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.w600,
+    return const Expanded(
+      child: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.shopping_bag_outlined,
+              size: 64,
               color: Color(0xFF8B8B8B),
             ),
-          ),
-          SizedBox(height: 8),
-          Text(
-            'Coming Soon',
-            style: TextStyle(
-              fontSize: 16,
-              color: Color(0xFF8B8B8B),
+            SizedBox(height: 16),
+            Text(
+              'Orders Management',
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF8B8B8B),
+              ),
             ),
-          ),
-        ],
+            SizedBox(height: 8),
+            Text(
+              'Coming Soon',
+              style: TextStyle(fontSize: 16, color: Color(0xFF8B8B8B)),
+            ),
+          ],
+        ),
       ),
-    ),
-  );
-}
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -848,68 +1277,64 @@ Future<double> _getTotalSales() async {
   }
 
   Widget _buildSearchBar() {
-  return Padding(
-    padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 10.0),
-    child: Row(
-      children: [
-        Expanded(
-          child: Container(
-            height: 50,
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.7),
-              borderRadius: BorderRadius.circular(25),
-            ),
-            child: Row(
-              children: [
-                const SizedBox(width: 20),
-                const Icon(Icons.menu, color: Colors.grey, size: 22),
-                const SizedBox(width: 15),
-                Expanded(
-                  child: TextField(
-                    controller: _searchController,
-                    decoration: const InputDecoration(
-                      hintText: 'Search your recipe',
-                      border: InputBorder.none,
-                      hintStyle: TextStyle(color: Colors.grey, fontSize: 16),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 10.0),
+      child: Row(
+        children: [
+          Expanded(
+            child: Container(
+              height: 50,
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.7),
+                borderRadius: BorderRadius.circular(25),
+              ),
+              child: Row(
+                children: [
+                  const SizedBox(width: 20),
+                  const Icon(Icons.menu, color: Colors.grey, size: 22),
+                  const SizedBox(width: 15),
+                  Expanded(
+                    child: TextField(
+                      controller: _searchController,
+                      decoration: const InputDecoration(
+                        hintText: 'Search your recipe',
+                        border: InputBorder.none,
+                        hintStyle: TextStyle(color: Colors.grey, fontSize: 16),
+                      ),
                     ),
                   ),
-                ),
-                const Icon(Icons.search, color: Colors.grey, size: 22),
-                const SizedBox(width: 15),
-              ],
+                  const Icon(Icons.search, color: Colors.grey, size: 22),
+                  const SizedBox(width: 15),
+                ],
+              ),
             ),
           ),
-        ),
-        const SizedBox(width: 10),
-        // ➕ Add Stocks Icon Button here
-        Container(
-          width: 50,
-          height: 50,
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(25),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.1),
-                blurRadius: 5,
-              ),
-            ],
+          const SizedBox(width: 10),
+          // ➕ Add Stocks Icon Button here
+          Container(
+            width: 50,
+            height: 50,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(25),
+              boxShadow: [
+                BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 5),
+              ],
+            ),
+            child: IconButton(
+              icon: const Icon(Icons.inventory_2_outlined, color: Colors.black),
+              onPressed: () {
+                print('📦 Navigating to Stocks tab...');
+                setState(() {
+                  _selectedBottomNavIndex = 2; // Go to Stocks
+                });
+              },
+            ),
           ),
-          child: IconButton(
-            icon: const Icon(Icons.inventory_2_outlined, color: Colors.black),
-            onPressed: () {
-              print('📦 Navigating to Stocks tab...');
-              setState(() {
-                _selectedBottomNavIndex = 2; // Go to Stocks
-              });
-            },
-          ),
-        ),
-      ],
-    ),
-  );
-}
-
+        ],
+      ),
+    );
+  }
 
   Widget _buildFoodGrid() {
     if (_isLoading) {

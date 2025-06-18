@@ -5,6 +5,82 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 class SupabaseService {
   final SupabaseClient _client = Supabase.instance.client;
 
+  // Make client accessible for custom operations
+  SupabaseClient get client => _client;
+
+  // Upload stock image
+  Future<String> uploadStockImage(File imageFile) async {
+    try {
+      print('🔍 Starting stock image upload process...');
+
+      // Check user authentication
+      final user = _client.auth.currentUser;
+      print('🔍 Current user: ${user?.id ?? 'Not logged in'}');
+
+      final fileName = 'stock_${DateTime.now().millisecondsSinceEpoch}';
+      final filePath = 'stocks/$fileName.png';
+
+      print('🔍 File path: $filePath');
+      print('🔍 Target bucket: yumcart-images');
+
+      // Check if file exists
+      final fileExists = await imageFile.exists();
+      print('🔍 Image file exists: $fileExists');
+
+      if (!fileExists) {
+        throw Exception('Selected image file does not exist');
+      }
+
+      print('🔍 File size: ${await imageFile.length()} bytes');
+
+      // Test storage connection
+      print('🔍 Testing storage connection...');
+      try {
+        final buckets = await _client.storage.listBuckets();
+        print('🔍 Found ${buckets.length} buckets');
+        
+        final hasTargetBucket = buckets.any(
+          (bucket) => bucket.name == 'yumcart-images',
+        );
+        print('🔍 yumcart-images bucket found: $hasTargetBucket');
+
+        if (!hasTargetBucket) {
+          throw Exception(
+            'Bucket yumcart-images not found. Available: ${buckets.map((b) => b.name).join(', ')}',
+          );
+        }
+      } catch (e) {
+        print('❌ Storage connection error: $e');
+        throw Exception('Cannot connect to storage: $e');
+      }
+
+      // Upload file
+      print('🔍 Uploading stock image...');
+      final storageResponse = await _client.storage
+          .from('yumcart-images')
+          .upload(filePath, imageFile);
+
+      print('🔍 Upload response: $storageResponse');
+
+      if (storageResponse.isEmpty) {
+        throw Exception('Upload failed - empty response from server');
+      }
+
+      // Get public URL
+      final publicUrl = _client.storage
+          .from('yumcart-images')
+          .getPublicUrl(filePath);
+
+      print('✅ Stock image upload successful!');
+      print('✅ Public URL: $publicUrl');
+
+      return publicUrl;
+    } catch (e) {
+      print('❌ Stock image upload failed: $e');
+      rethrow;
+    }
+  }
+
   // Upload profile image with simple debugging
   Future<String> uploadProfileImage(File imageFile) async {
     try {
@@ -140,6 +216,34 @@ class SupabaseService {
     }
   }
 
+  // Get all stock images from Supabase storage
+  Future<List<Map<String, String>>> getStockImages() async {
+    try {
+      print('📸 Fetching stock images from Supabase...');
+
+      final List<FileObject> files = await _client.storage
+          .from('yumcart-images')
+          .list(path: 'stocks');
+
+      List<Map<String, String>> images = [];
+
+      for (var file in files) {
+        final fullPath = 'stocks/${file.name}';
+        final publicUrl = _client.storage
+            .from('yumcart-images')
+            .getPublicUrl(fullPath);
+
+        images.add({'name': file.name, 'url': publicUrl, 'path': fullPath});
+      }
+
+      print('📸 Found ${images.length} stock images');
+      return images;
+    } catch (e) {
+      print('❌ Error fetching stock images: $e');
+      return [];
+    }
+  }
+
   // Delete image from Supabase storage
   Future<bool> deleteRecipeImage(String filePath) async {
     try {
@@ -149,6 +253,19 @@ class SupabaseService {
       return true;
     } catch (e) {
       print('❌ Error deleting image: $e');
+      return false;
+    }
+  }
+
+  // Delete stock image from Supabase storage
+  Future<bool> deleteStockImage(String filePath) async {
+    try {
+      await _client.storage.from('yumcart-images').remove([filePath]);
+
+      print('🗑️ Deleted stock image: $filePath');
+      return true;
+    } catch (e) {
+      print('❌ Error deleting stock image: $e');
       return false;
     }
   }
