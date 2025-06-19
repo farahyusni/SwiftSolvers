@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'edit_recipe_page.dart';
 import '../../services/recipe_service.dart';
+import '../../helpers/ingredient_stock_helper.dart';
 
 class SellerRecipeDetailPage extends StatefulWidget {
   final Map<String, dynamic> recipe;
 
-  const SellerRecipeDetailPage({Key? key, required this.recipe}) : super(key: key);
+  const SellerRecipeDetailPage({Key? key, required this.recipe})
+    : super(key: key);
 
   @override
   _SellerRecipeDetailPageState createState() => _SellerRecipeDetailPageState();
@@ -112,15 +114,17 @@ class _SellerRecipeDetailPageState extends State<SellerRecipeDetailPage> {
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(20),
-        child: widget.recipe['imageUrl'] != null && widget.recipe['imageUrl'].isNotEmpty
-            ? Image.network(
-                widget.recipe['imageUrl'],
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) {
-                  return _buildImagePlaceholder();
-                },
-              )
-            : _buildImagePlaceholder(),
+        child:
+            widget.recipe['imageUrl'] != null &&
+                    widget.recipe['imageUrl'].isNotEmpty
+                ? Image.network(
+                  widget.recipe['imageUrl'],
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) {
+                    return _buildImagePlaceholder();
+                  },
+                )
+                : _buildImagePlaceholder(),
       ),
     );
   }
@@ -164,7 +168,8 @@ class _SellerRecipeDetailPageState extends State<SellerRecipeDetailPage> {
           ),
         ),
         const SizedBox(height: 8),
-        if (widget.recipe['description'] != null && widget.recipe['description'].isNotEmpty)
+        if (widget.recipe['description'] != null &&
+            widget.recipe['description'].isNotEmpty)
           Text(
             widget.recipe['description'],
             style: TextStyle(
@@ -210,7 +215,11 @@ class _SellerRecipeDetailPageState extends State<SellerRecipeDetailPage> {
     );
   }
 
-  Widget _buildStatItem({required IconData icon, required String label, required String value}) {
+  Widget _buildStatItem({
+    required IconData icon,
+    required String label,
+    required String value,
+  }) {
     return Column(
       children: [
         Icon(icon, color: const Color(0xFFFF5B9E), size: 24),
@@ -223,13 +232,7 @@ class _SellerRecipeDetailPageState extends State<SellerRecipeDetailPage> {
             color: Colors.black,
           ),
         ),
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 12,
-            color: Colors.grey[600],
-          ),
-        ),
+        Text(label, style: TextStyle(fontSize: 12, color: Colors.grey[600])),
       ],
     );
   }
@@ -256,16 +259,17 @@ class _SellerRecipeDetailPageState extends State<SellerRecipeDetailPage> {
         Expanded(
           child: ElevatedButton.icon(
             onPressed: _isDeleting ? null : _deleteRecipe,
-            icon: _isDeleting
-                ? const SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: CircularProgressIndicator(
-                      color: Colors.white,
-                      strokeWidth: 2,
-                    ),
-                  )
-                : const Icon(Icons.delete),
+            icon:
+                _isDeleting
+                    ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(
+                        color: Colors.white,
+                        strokeWidth: 2,
+                      ),
+                    )
+                    : const Icon(Icons.delete),
             label: Text(_isDeleting ? 'Deleting...' : 'Delete'),
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.red,
@@ -282,78 +286,21 @@ class _SellerRecipeDetailPageState extends State<SellerRecipeDetailPage> {
   }
 
   Widget _buildIngredientsSection() {
-    final ingredients = widget.recipe['ingredients'] as List<dynamic>? ?? [];
-    
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Ingredients',
-          style: TextStyle(
-            fontSize: 22,
-            fontWeight: FontWeight.bold,
-            color: Colors.black,
-          ),
-        ),
-        const SizedBox(height: 12),
-        if (ingredients.isEmpty)
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.grey[100],
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: const Text(
-              'No ingredients added yet.',
-              style: TextStyle(
-                fontSize: 16,
-                color: Colors.grey,
-                fontStyle: FontStyle.italic,
-              ),
-            ),
-          )
-        else
-          ...ingredients.asMap().entries.map((entry) {
-            final ingredient = entry.value as Map<String, dynamic>;
-            return Container(
-              margin: const EdgeInsets.only(bottom: 8),
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.8),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.grey.withOpacity(0.3)),
-              ),
-              child: Row(
-                children: [
-                  Container(
-                    width: 8,
-                    height: 8,
-                    decoration: const BoxDecoration(
-                      color: Color(0xFFFF5B9E),
-                      shape: BoxShape.circle,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      '${ingredient['amount']} ${ingredient['unit']} ${ingredient['name']}',
-                      style: const TextStyle(
-                        fontSize: 16,
-                        color: Colors.black,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            );
-          }).toList(),
-      ],
+    return Padding(
+      padding: const EdgeInsets.all(20.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Enhanced ingredients list
+          IngredientListWidget(ingredients: widget.recipe['ingredients'] ?? []),
+        ],
+      ),
     );
   }
 
   Widget _buildInstructionsSection() {
     final instructions = widget.recipe['instructions'] as List<dynamic>? ?? [];
-    
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -436,7 +383,7 @@ class _SellerRecipeDetailPageState extends State<SellerRecipeDetailPage> {
   Future<void> _navigateToEdit() async {
     try {
       print('✏️ Navigating to edit recipe: ${widget.recipe['name']}');
-      
+
       final result = await Navigator.of(context).push(
         MaterialPageRoute(
           builder: (context) => EditRecipePage(recipe: widget.recipe),
@@ -447,14 +394,14 @@ class _SellerRecipeDetailPageState extends State<SellerRecipeDetailPage> {
 
       if (result != null && result is Map<String, dynamic>) {
         print('✅ Recipe was updated, updating local data...');
-        
+
         // Update the local recipe data
         setState(() {
           // Update the widget.recipe with new data
           widget.recipe.clear();
           widget.recipe.addAll(result);
         });
-        
+
         // Show success message
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -463,13 +410,13 @@ class _SellerRecipeDetailPageState extends State<SellerRecipeDetailPage> {
             duration: Duration(seconds: 2),
           ),
         );
-        
+
         // Return to home page with update result
         Navigator.of(context).pop({'updated': true, 'recipe': result});
       }
     } catch (e) {
       print('❌ Error navigating to edit: $e');
-      
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Error opening edit page: $e'),
@@ -481,14 +428,16 @@ class _SellerRecipeDetailPageState extends State<SellerRecipeDetailPage> {
 
   Future<void> _deleteRecipe() async {
     print('🗑️ Starting to delete recipe...');
-    
+
     // Show confirmation dialog first
     final bool? shouldDelete = await showDialog<bool>(
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
           title: const Text('Delete Recipe'),
-          content: Text('Are you sure you want to delete "${widget.recipe['name']}"?'),
+          content: Text(
+            'Are you sure you want to delete "${widget.recipe['name']}"?',
+          ),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(false),
@@ -516,19 +465,19 @@ class _SellerRecipeDetailPageState extends State<SellerRecipeDetailPage> {
 
     try {
       final recipeId = widget.recipe['id']?.toString() ?? '';
-      
+
       if (recipeId.isEmpty) {
         throw Exception('Recipe ID is empty');
       }
 
       print('🗑️ Deleting recipe with ID: $recipeId');
-      
+
       // Call the delete service
       final success = await _recipeService.deleteRecipe(recipeId);
 
       if (success) {
         print('✅ Recipe deleted successfully');
-        
+
         if (mounted) {
           // Show success message
           ScaffoldMessenger.of(context).showSnackBar(
@@ -544,11 +493,11 @@ class _SellerRecipeDetailPageState extends State<SellerRecipeDetailPage> {
         }
       } else {
         print('❌ Failed to delete recipe');
-        
+
         setState(() {
           _isDeleting = false;
         });
-        
+
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
@@ -561,11 +510,11 @@ class _SellerRecipeDetailPageState extends State<SellerRecipeDetailPage> {
       }
     } catch (e) {
       print('❌ Error deleting recipe: $e');
-      
+
       setState(() {
         _isDeleting = false;
       });
-      
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(

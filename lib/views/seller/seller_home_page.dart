@@ -1,12 +1,14 @@
+// lib/views/seller/seller_home_page.dart
 import 'package:flutter/material.dart';
-import 'seller_shop_profile_page.dart'; // <-- Add this import
+import 'package:firebase_auth/firebase_auth.dart';
+import 'seller_shop_profile_page.dart';
 import 'seller_profile_page.dart';
 import 'seller_recipe_detail_page.dart';
 import 'edit_recipe_page.dart';
 import '../../services/recipe_service.dart';
-import '../../services/stock_service.dart'; // adjust path if needed
-import 'edit_stock_item_page.dart';
 import '../../services/stock_service.dart';
+import 'edit_stock_item_page.dart';
+import '../../helpers/auth_helper.dart'; // Add this import
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class SellerHomePage extends StatefulWidget {
@@ -19,20 +21,24 @@ class SellerHomePage extends StatefulWidget {
 class _SellerHomePageState extends State<SellerHomePage> {
   int _selectedBottomNavIndex = 0;
   final TextEditingController _searchController = TextEditingController();
-  final RecipeService _recipeService = RecipeService(); // Add this line
+  final RecipeService _recipeService = RecipeService();
+  final StockService _stockService = StockService();
 
   List<Map<String, dynamic>> recipes = [];
   List<Map<String, dynamic>> filteredRecipes = [];
-  bool _isLoading = true; // Add loading state
-
-  final StockService _stockService = StockService(); // <-- Firestore service
+  bool _isLoading = true;
 
   List<Map<String, dynamic>> stocks = [];
   List<Map<String, dynamic>> filteredStocks = [];
   final TextEditingController _stockSearchController = TextEditingController();
   bool _isStockLoading = true;
 
-  // Add these new variables for filtering
+  // User session data
+  String? _currentUserId;
+  String? _currentUserEmail;
+  bool _isNewUser = false;
+
+  // Category filter variables
   String _selectedStockCategory = 'All';
   bool _showCategoryFilter = false;
   final List<String> _stockCategories = [
@@ -53,34 +59,94 @@ class _SellerHomePageState extends State<SellerHomePage> {
   void initState() {
     super.initState();
     _searchController.addListener(_filterSearchResults);
-    _debugDatabase();
-    _loadRecipes(); // Load recipes from database
-    _loadStocks();
+    _stockSearchController.addListener(() {
+      setState(() {
+        // This will trigger rebuild and filter the stock list
+      });
+    });
+
+    // Initialize user session and load data
+    _initializeUserSession();
   }
 
   @override
   void dispose() {
     _searchController.dispose();
+    _stockSearchController.dispose();
     super.dispose();
   }
 
-  Future<void> _loadStocks() async {
-    print('📦 Loading stocks from Firestore...');
-    setState(() => _isStockLoading = true);
+  // Initialize user session and check for new users
+  Future<void> _initializeUserSession() async {
     try {
-      final fetchedStocks = await _stockService.getAllStocks();
-      setState(() {
-        stocks = fetchedStocks;
-        filteredStocks = fetchedStocks;
-        _isStockLoading = false;
-      });
+      // Validate user session
+      final isValidSession = await AuthHelper.validateUserSession();
+      if (!isValidSession) {
+        // Redirect to login if session is invalid
+        if (mounted) {
+          Navigator.of(context).pushReplacementNamed('/login');
+        }
+        return;
+      }
+
+      // Get current user info
+      _currentUserId = AuthHelper.getCurrentUserId();
+      _currentUserEmail = AuthHelper.getCurrentUserEmail();
+
+      print('👤 Current user: $_currentUserEmail (ID: $_currentUserId)');
+
+      // Load existing data (no automatic sample data creation)
+      await _loadUserData();
     } catch (e) {
-      setState(() => _isStockLoading = false);
+      print('❌ Error initializing user session: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error loading user data: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
+  // Initialize data for new users
+  Future<void> _initializeNewUserData() async {
+    try {
+      print('🆕 New user detected: $_currentUserId');
+
+      // Mark user as initialized without creating sample data
+      await AuthHelper.markUserAsInitialized();
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Welcome! You can start creating your own recipes and managing inventory.',
+            ),
+            backgroundColor: Color(0xFFFF5B9E),
+            duration: Duration(seconds: 3),
+          ),
+        );
+      }
+    } catch (e) {
+      print('❌ Error initializing new user: $e');
+      rethrow;
+    }
+  }
+
+  // Load user-specific data
+  Future<void> _loadUserData() async {
+    try {
+      await Future.wait([_loadRecipes(), _loadStocks()]);
+    } catch (e) {
+      print('❌ Error loading user data: $e');
+    }
+  }
+
+  // Load recipes for current user
   Future<void> _loadRecipes() async {
-    print('🔄 Loading recipes from database...');
+    print('🔄 Loading recipes for user: $_currentUserId');
 
     if (mounted) {
       setState(() {
@@ -91,37 +157,24 @@ class _SellerHomePageState extends State<SellerHomePage> {
     try {
       final loadedRecipes = await _recipeService.getAllRecipes();
 
-      print('📊 Loaded ${loadedRecipes.length} recipes');
+      print('📊 Loaded ${loadedRecipes.length} recipes for current user');
 
       // Debug: Print all recipe names and IDs
       for (var recipe in loadedRecipes) {
-        print('📖 Recipe: "${recipe['name']}" - ID: "${recipe['id']}"');
+        print(
+          '📖 Recipe: "${recipe['name']}" - ID: "${recipe['id']}" - Created by: "${recipe['createdBy']}"',
+        );
       }
 
-      // If no recipes found, initialize with sample data
-      if (loadedRecipes.isEmpty) {
-        print('⚠️ No recipes found, initializing database...');
-        await _recipeService.initializeDatabase();
-        final newRecipes = await _recipeService.getAllRecipes();
-
-        if (mounted) {
-          setState(() {
-            recipes = newRecipes;
-            filteredRecipes = newRecipes;
-            _isLoading = false;
-          });
-        }
-      } else {
-        if (mounted) {
-          setState(() {
-            recipes = loadedRecipes;
-            filteredRecipes = loadedRecipes;
-            _isLoading = false;
-          });
-        }
+      if (mounted) {
+        setState(() {
+          recipes = loadedRecipes;
+          filteredRecipes = loadedRecipes;
+          _isLoading = false;
+        });
       }
 
-      print('✅ Loaded ${recipes.length} recipes successfully');
+      print('✅ Loaded ${recipes.length} recipes successfully for current user');
 
       // Filter current search if there's text in search controller
       if (_searchController.text.isNotEmpty) {
@@ -144,10 +197,58 @@ class _SellerHomePageState extends State<SellerHomePage> {
     }
   }
 
+  // Load stocks for current user
+  Future<void> _loadStocks() async {
+    print('📦 Loading stocks for user: $_currentUserId');
+
+    if (mounted) {
+      setState(() => _isStockLoading = true);
+    }
+
+    try {
+      final fetchedStocks = await _stockService.getAllStocks();
+
+      if (mounted) {
+        setState(() {
+          stocks = fetchedStocks;
+          filteredStocks = fetchedStocks;
+          _isStockLoading = false;
+        });
+      }
+
+      print('✅ Loaded ${stocks.length} stock items for current user');
+    } catch (e) {
+      print('❌ Error loading stocks: $e');
+
+      if (mounted) {
+        setState(() => _isStockLoading = false);
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error loading stocks: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  // Navigate to create new recipe
   Future<void> _navigateToCreateRecipe() async {
     print('🆕 Navigating to create new recipe page');
 
     try {
+      // Validate user session before creating
+      if (!AuthHelper.isUserAuthenticated()) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Please log in to create recipes'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+
       // Create an empty recipe template
       final emptyRecipe = {
         'id': '', // Will be set after creation
@@ -170,7 +271,7 @@ class _SellerHomePageState extends State<SellerHomePage> {
           'fat': '0g',
         },
         'totalEstimatedCost': {'tesco': 0.0, 'mydin': 0.0, 'giant': 0.0},
-        'createdBy': 'admin', // You can change this to current user ID
+        'createdBy': _currentUserId, // Link to current user
         'isNewRecipe': true, // Flag to indicate this is a new recipe
       };
 
@@ -187,26 +288,32 @@ class _SellerHomePageState extends State<SellerHomePage> {
         // Reload recipes from database
         await _loadRecipes();
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('New recipe created successfully!'),
-            backgroundColor: Color(0xFFFF5B9E),
-            duration: Duration(seconds: 3),
-          ),
-        );
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('New recipe created successfully!'),
+              backgroundColor: Color(0xFFFF5B9E),
+              duration: Duration(seconds: 3),
+            ),
+          );
+        }
       }
     } catch (e) {
       print('❌ Error navigating to create recipe page: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Failed to open create recipe page. Please try again.'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Failed to open create recipe page. Please try again.',
+            ),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
-  // Function to filter recipes based on search text
+  // Filter recipes based on search text
   void _filterSearchResults() {
     if (_searchController.text.isEmpty) {
       setState(() {
@@ -228,29 +335,7 @@ class _SellerHomePageState extends State<SellerHomePage> {
     }
   }
 
-  Future<void> _debugDatabase() async {
-    print('🔍 Debugging database...');
-    try {
-      final recipes = await _recipeService.getAllRecipes();
-      print('📊 Found ${recipes.length} recipes in database');
-
-      if (recipes.isEmpty) {
-        print(
-          '⚠️ No recipes found. You might need to initialize the database.',
-        );
-        // Uncomment the line below if you need to add sample data
-        // await _recipeService.initializeDatabase();
-      } else {
-        for (var recipe in recipes) {
-          print('📖 Recipe: ${recipe['name']}');
-        }
-      }
-    } catch (e) {
-      print('❌ Database error: $e');
-    }
-  }
-
-  // Function to get the main content based on selected tab
+  // Get the main content based on selected tab
   Widget _getMainContent() {
     switch (_selectedBottomNavIndex) {
       case 0: // Home - Show Quick Stats
@@ -261,7 +346,6 @@ class _SellerHomePageState extends State<SellerHomePage> {
         return _buildStocksContent();
       case 3: // Recipe - Show search and food items
         return Expanded(
-          // Add Expanded here!
           child: Column(children: [_buildSearchBar(), _buildFoodGrid()]),
         );
       default:
@@ -269,38 +353,91 @@ class _SellerHomePageState extends State<SellerHomePage> {
     }
   }
 
+  // Calculate total sales for current user
   Future<double> _getTotalSales() async {
-    double total = 0.0;
-    final snapshot =
-        await FirebaseFirestore.instance.collection('orders').get();
+    try {
+      double total = 0.0;
+      final snapshot =
+          await FirebaseFirestore.instance
+              .collection('orders')
+              .where(
+                'sellerId',
+                isEqualTo: _currentUserId,
+              ) // Filter by current user
+              .get();
 
-    for (var doc in snapshot.docs) {
-      final data = doc.data();
-      if (data['status'] == 'paid') {
-        total += (data['totalAmount'] ?? 0).toDouble();
+      for (var doc in snapshot.docs) {
+        final data = doc.data();
+        if (data['status'] == 'paid') {
+          total += (data['totalAmount'] ?? 0).toDouble();
+        }
       }
+      return total;
+    } catch (e) {
+      print('❌ Error calculating total sales: $e');
+      return 0.0;
     }
-    return total;
   }
 
+  // Build quick stats widget
   Widget _buildQuickStats() {
     return Expanded(
       child: SingleChildScrollView(
         padding: const EdgeInsets.all(20.0),
         child: Column(
           children: [
-            const Text(
+            Text(
               'Quick Stats',
-              style: TextStyle(
+              style: const TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.w600,
                 color: Color(0xFF8B8B8B),
               ),
             ),
-            const SizedBox(height: 30),
+            const SizedBox(height: 20),
+
+            // Welcome message for current user
+            if (_currentUserEmail != null)
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(16),
+                margin: const EdgeInsets.only(bottom: 20),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFF5B9E).withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: const Color(0xFFFF5B9E).withOpacity(0.3),
+                  ),
+                ),
+                child: Column(
+                  children: [
+                    const Icon(
+                      Icons.person,
+                      color: Color(0xFFFF5B9E),
+                      size: 32,
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Welcome, ${AuthHelper.getUserDisplayName()}!',
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFFFF5B9E),
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      _currentUserEmail ?? '',
+                      style: const TextStyle(
+                        fontSize: 14,
+                        color: Color(0xFF8B8B8B),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
 
             // Total Sales Card
-            // Total Sales Card - with FutureBuilder
             FutureBuilder<double>(
               future: _getTotalSales(),
               builder: (context, snapshot) {
@@ -365,7 +502,7 @@ class _SellerHomePageState extends State<SellerHomePage> {
               },
             ),
 
-            // Number of Recipes Card - Updated to show actual count
+            // Number of Recipes Card
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(20),
@@ -398,7 +535,7 @@ class _SellerHomePageState extends State<SellerHomePage> {
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    '${recipes.length}', // Changed from '-' to actual recipe count
+                    '${recipes.length}',
                     style: const TextStyle(
                       fontSize: 32,
                       fontWeight: FontWeight.bold,
@@ -418,7 +555,7 @@ class _SellerHomePageState extends State<SellerHomePage> {
               ),
             ),
 
-            // Pending Orders Card
+            // Number of Stock Items Card
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(20),
@@ -443,15 +580,15 @@ class _SellerHomePageState extends State<SellerHomePage> {
                       shape: BoxShape.circle,
                     ),
                     child: const Icon(
-                      Icons.pending_actions,
+                      Icons.inventory_2,
                       color: Colors.white,
                       size: 28,
                     ),
                   ),
                   const SizedBox(height: 16),
-                  const Text(
-                    '-',
-                    style: TextStyle(
+                  Text(
+                    '${stocks.length}',
+                    style: const TextStyle(
                       fontSize: 32,
                       fontWeight: FontWeight.bold,
                       color: Colors.black,
@@ -459,7 +596,7 @@ class _SellerHomePageState extends State<SellerHomePage> {
                   ),
                   const SizedBox(height: 8),
                   const Text(
-                    'Pending Orders',
+                    'Stock Items',
                     style: TextStyle(
                       fontSize: 16,
                       color: Color(0xFF8B8B8B),
@@ -475,6 +612,7 @@ class _SellerHomePageState extends State<SellerHomePage> {
     );
   }
 
+  // Build stocks content with user-specific data
   Widget _buildStocksContent() {
     if (_isStockLoading) {
       return const Expanded(
@@ -510,9 +648,9 @@ class _SellerHomePageState extends State<SellerHomePage> {
             padding: const EdgeInsets.all(20.0),
             child: Column(
               children: [
-                const Text(
+                Text(
                   'Inventory Management',
-                  style: TextStyle(
+                  style: const TextStyle(
                     fontSize: 24,
                     fontWeight: FontWeight.w600,
                     color: Color(0xFF8B8B8B),
@@ -819,7 +957,7 @@ class _SellerHomePageState extends State<SellerHomePage> {
                           ),
                           child: Row(
                             children: [
-                              // Image container (keep your existing image code)
+                              // Image container
                               Container(
                                 width: 80,
                                 height: 80,
@@ -1039,22 +1177,38 @@ class _SellerHomePageState extends State<SellerHomePage> {
 
                                           if (confirmed == true) {
                                             try {
-                                              await _stockService.deleteStock(
-                                                item['id'],
-                                              );
-                                              await _loadStocks();
-                                              if (mounted) {
-                                                ScaffoldMessenger.of(
-                                                  context,
-                                                ).showSnackBar(
-                                                  const SnackBar(
-                                                    content: Text(
-                                                      'Stock deleted successfully',
+                                              final success =
+                                                  await _stockService
+                                                      .deleteStock(item['id']);
+                                              if (success) {
+                                                await _loadStocks();
+                                                if (mounted) {
+                                                  ScaffoldMessenger.of(
+                                                    context,
+                                                  ).showSnackBar(
+                                                    const SnackBar(
+                                                      content: Text(
+                                                        'Stock deleted successfully',
+                                                      ),
+                                                      backgroundColor:
+                                                          Colors.green,
                                                     ),
-                                                    backgroundColor:
-                                                        Colors.green,
-                                                  ),
-                                                );
+                                                  );
+                                                }
+                                              } else {
+                                                if (mounted) {
+                                                  ScaffoldMessenger.of(
+                                                    context,
+                                                  ).showSnackBar(
+                                                    const SnackBar(
+                                                      content: Text(
+                                                        'Failed to delete stock',
+                                                      ),
+                                                      backgroundColor:
+                                                          Colors.red,
+                                                    ),
+                                                  );
+                                                }
                                               }
                                             } catch (e) {
                                               if (mounted) {
@@ -1151,32 +1305,6 @@ class _SellerHomePageState extends State<SellerHomePage> {
           ],
         ),
       ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFFEECEE), // Light pink background
-      body: SafeArea(
-        child: Column(
-          children: [
-            // App bar with back button, logo, and profile icons
-            _buildAppBar(context),
-
-            // Main content based on selected tab
-            _getMainContent(),
-          ],
-        ),
-      ),
-
-      // Bottom Navigation Bar
-      bottomNavigationBar: _buildBottomNavigationBar(),
-
-      // Floating Action Button above Recipe icon (only show when Recipe is selected)
-      floatingActionButton:
-          _selectedBottomNavIndex == 3 ? _buildFloatingActionButton() : null,
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
     );
   }
 
@@ -1310,7 +1438,7 @@ class _SellerHomePageState extends State<SellerHomePage> {
             ),
           ),
           const SizedBox(width: 10),
-          // ➕ Add Stocks Icon Button here
+          // Add Stocks Icon Button
           Container(
             width: 50,
             height: 50,
@@ -1402,7 +1530,6 @@ class _SellerHomePageState extends State<SellerHomePage> {
           itemBuilder: (context, index) {
             final recipe = filteredRecipes[index];
             return GestureDetector(
-              // In your SellerHomePage, replace the recipe grid item onTap with this:
               onTap: () async {
                 print('🍽️ Tapped on recipe: ${recipe['name']}');
                 print('🔍 Recipe ID: ${recipe['id']}');
@@ -1640,7 +1767,6 @@ class _SellerHomePageState extends State<SellerHomePage> {
           bottom: 10,
           left: MediaQuery.of(context).size.width / 2 - 35,
           child: GestureDetector(
-            // Add GestureDetector for tap handling
             onTap: () {
               print('➕ Create new recipe button tapped');
               _navigateToCreateRecipe();
@@ -1664,6 +1790,32 @@ class _SellerHomePageState extends State<SellerHomePage> {
           ),
         ),
       ],
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFFEECEE), // Light pink background
+      body: SafeArea(
+        child: Column(
+          children: [
+            // App bar with back button, logo, and profile icons
+            _buildAppBar(context),
+
+            // Main content based on selected tab
+            _getMainContent(),
+          ],
+        ),
+      ),
+
+      // Bottom Navigation Bar
+      bottomNavigationBar: _buildBottomNavigationBar(),
+
+      // Floating Action Button above Recipe icon (only show when Recipe is selected)
+      floatingActionButton:
+          _selectedBottomNavIndex == 3 ? _buildFloatingActionButton() : null,
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
     );
   }
 }

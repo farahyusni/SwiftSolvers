@@ -1,8 +1,10 @@
+// lib/views/seller/edit_recipe_page.dart
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import '../../services/recipe_service.dart';
 import '../../services/supabase_service.dart';
+import '../../services/stock_service.dart';
 
 class EditRecipePage extends StatefulWidget {
   final Map<String, dynamic> recipe;
@@ -18,6 +20,7 @@ class _EditRecipePageState extends State<EditRecipePage>
   late TabController _tabController;
   final RecipeService _recipeService = RecipeService();
   final SupabaseService _supabaseService = SupabaseService();
+  final StockService _stockService = StockService();
   final ImagePicker _imagePicker = ImagePicker();
 
   // Form controllers
@@ -96,6 +99,13 @@ class _EditRecipePageState extends State<EditRecipePage>
           'category': 'basic',
           'isOptional': false,
           'estimatedPrice': {'tesco': 0.0, 'mydin': 0.0, 'giant': 0.0},
+          // Stock linking fields
+          'linkedStockId': null,
+          'linkedStockName': null,
+          'linkedStockPrice': null,
+          'linkedStockUnit': null,
+          'linkedStockCategory': null,
+          'linkedStockAvailable': null,
         });
       }
 
@@ -108,6 +118,255 @@ class _EditRecipePageState extends State<EditRecipePage>
     print(
       '✅ Initialized with ${_ingredients.length} ingredients and ${_instructions.length} instructions',
     );
+  }
+
+  // Load available stocks for linking
+  Future<List<Map<String, dynamic>>> _loadAvailableStocks() async {
+    try {
+      return await _stockService.getAllStocks();
+    } catch (e) {
+      print('❌ Error loading stocks: $e');
+      return [];
+    }
+  }
+
+  // Link ingredient to stock
+  void _linkIngredientToStock(int ingredientIndex, Map<String, dynamic> stock) {
+    setState(() {
+      _ingredients[ingredientIndex]['linkedStockId'] = stock['id'];
+      _ingredients[ingredientIndex]['linkedStockName'] = stock['name'];
+      _ingredients[ingredientIndex]['linkedStockPrice'] = stock['price'];
+      _ingredients[ingredientIndex]['linkedStockUnit'] = stock['unit'];
+      _ingredients[ingredientIndex]['linkedStockCategory'] = stock['category'];
+      _ingredients[ingredientIndex]['linkedStockAvailable'] = stock['stock'];
+    });
+
+    Navigator.pop(context);
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          'Ingredient linked to "${stock['name']}"',
+        ),
+        backgroundColor: const Color(0xFFFF5B9E),
+      ),
+    );
+  }
+
+  // Unlink ingredient from stock
+  void _unlinkFromStock(int ingredientIndex) {
+    setState(() {
+      _ingredients[ingredientIndex].remove('linkedStockId');
+      _ingredients[ingredientIndex].remove('linkedStockName');
+      _ingredients[ingredientIndex].remove('linkedStockPrice');
+      _ingredients[ingredientIndex].remove('linkedStockUnit');
+      _ingredients[ingredientIndex].remove('linkedStockCategory');
+      _ingredients[ingredientIndex].remove('linkedStockAvailable');
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Ingredient unlinked from stock'),
+        backgroundColor: Colors.orange,
+      ),
+    );
+  }
+
+  // Show stock linking dialog
+  void _showStockLinkingDialog(int ingredientIndex) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return Dialog(
+          child: Container(
+            width: MediaQuery.of(context).size.width * 0.9,
+            height: MediaQuery.of(context).size.height * 0.7,
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Link to Stock Item',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: () => Navigator.pop(context),
+                      icon: const Icon(Icons.close),
+                    ),
+                  ],
+                ),
+                const Divider(),
+                Expanded(
+                  child: FutureBuilder<List<Map<String, dynamic>>>(
+                    future: _loadAvailableStocks(),
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return const Center(
+                          child: CircularProgressIndicator(
+                            color: Color(0xFFFF5B9E),
+                          ),
+                        );
+                      }
+
+                      if (snapshot.hasError) {
+                        return Center(
+                          child: Text(
+                            'Error: ${snapshot.error}',
+                            style: const TextStyle(color: Colors.red),
+                          ),
+                        );
+                      }
+
+                      final stocks = snapshot.data ?? [];
+
+                      if (stocks.isEmpty) {
+                        return const Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.inventory_2_outlined,
+                                size: 64,
+                                color: Colors.grey,
+                              ),
+                              SizedBox(height: 16),
+                              Text(
+                                'No stock items found',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  color: Colors.grey,
+                                ),
+                              ),
+                              SizedBox(height: 8),
+                              Text(
+                                'Add stock items first to link them to ingredients',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.grey,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                            ],
+                          ),
+                        );
+                      }
+
+                      return ListView.builder(
+                        itemCount: stocks.length,
+                        itemBuilder: (context, index) {
+                          final stock = stocks[index];
+                          return Container(
+                            margin: const EdgeInsets.only(bottom: 8),
+                            child: ListTile(
+                              leading: Container(
+                                width: 50,
+                                height: 50,
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(8),
+                                  color: Colors.grey[200],
+                                ),
+                                child: stock['imageUrl'] != null && 
+                                       stock['imageUrl'].toString().isNotEmpty
+                                    ? ClipRRect(
+                                        borderRadius: BorderRadius.circular(8),
+                                        child: Image.network(
+                                          stock['imageUrl'],
+                                          fit: BoxFit.cover,
+                                          errorBuilder: (context, error, stackTrace) {
+                                            return const Icon(
+                                              Icons.inventory_2,
+                                              color: Colors.grey,
+                                            );
+                                          },
+                                        ),
+                                      )
+                                    : const Icon(
+                                        Icons.inventory_2,
+                                        color: Colors.grey,
+                                      ),
+                              ),
+                              title: Text(
+                                stock['name'] ?? 'Unknown Item',
+                                style: const TextStyle(fontWeight: FontWeight.w600),
+                              ),
+                              subtitle: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'RM${(stock['price'] ?? 0).toStringAsFixed(2)} / ${stock['unit'] ?? 'unit'}',
+                                    style: const TextStyle(
+                                      color: Color(0xFFFF5B9E),
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                  Text(
+                                    'Available: ${stock['stock']} | Category: ${stock['category']}',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: Colors.grey[600],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              trailing: ElevatedButton(
+                                onPressed: () => _linkIngredientToStock(
+                                  ingredientIndex,
+                                  stock,
+                                ),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: const Color(0xFFFF5B9E),
+                                  foregroundColor: Colors.white,
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 16,
+                                    vertical: 8,
+                                  ),
+                                ),
+                                child: const Text(
+                                  'Link',
+                                  style: TextStyle(fontSize: 12),
+                                ),
+                              ),
+                              tileColor: Colors.grey[50],
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                                side: BorderSide(color: Colors.grey[300]!),
+                              ),
+                            ),
+                          );
+                        },
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  // Get ingredient stock status
+  Future<Map<String, dynamic>> _getIngredientStockStatus() async {
+    int linkedCount = 0;
+    int totalCount = _ingredients.length;
+    
+    for (var ingredient in _ingredients) {
+      if (ingredient['linkedStockId'] != null && 
+          ingredient['linkedStockId'].toString().isNotEmpty) {
+        linkedCount++;
+      }
+    }
+    
+    return {
+      'linkedCount': linkedCount,
+      'totalCount': totalCount,
+    };
   }
 
   void _showSupabaseImageGallery() {
@@ -658,6 +917,8 @@ class _EditRecipePageState extends State<EditRecipePage>
 
   Widget _buildIngredientItem(int index) {
     final ingredient = _ingredients[index];
+    final bool isLinkedToStock = ingredient['linkedStockId'] != null && 
+                                ingredient['linkedStockId'].toString().isNotEmpty;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -665,20 +926,83 @@ class _EditRecipePageState extends State<EditRecipePage>
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.8),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.withOpacity(0.3)),
+        border: Border.all(
+          color: isLinkedToStock 
+              ? const Color(0xFFFF5B9E).withOpacity(0.5)
+              : Colors.grey.withOpacity(0.3),
+          width: isLinkedToStock ? 2 : 1,
+        ),
       ),
       child: Column(
         children: [
+          // Stock Link Status Indicator
+          if (isLinkedToStock)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(8),
+              margin: const EdgeInsets.only(bottom: 12),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFF5B9E).withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: const Color(0xFFFF5B9E).withOpacity(0.3),
+                ),
+              ),
+              child: Row(
+                children: [
+                  const Icon(
+                    Icons.link,
+                    color: Color(0xFFFF5B9E),
+                    size: 16,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Linked to: ${ingredient['linkedStockName'] ?? 'Stock Item'}',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: Color(0xFFFF5B9E),
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                  GestureDetector(
+                    onTap: () => _unlinkFromStock(index),
+                    child: Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        color: Colors.red.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: const Icon(
+                        Icons.link_off,
+                        size: 16,
+                        color: Colors.red,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+          // Ingredient Fields Row
           Row(
             children: [
               Expanded(
                 flex: 2,
                 child: TextFormField(
                   initialValue: ingredient['name'] ?? '',
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     labelText: 'Ingredient Name',
-                    border: OutlineInputBorder(),
+                    border: const OutlineInputBorder(),
                     isDense: true,
+                    suffixIcon: isLinkedToStock
+                        ? const Icon(
+                            Icons.inventory_2,
+                            color: Color(0xFFFF5B9E),
+                            size: 20,
+                          )
+                        : null,
                   ),
                   onChanged: (value) {
                     setState(() {
@@ -729,6 +1053,70 @@ class _EditRecipePageState extends State<EditRecipePage>
               ),
             ],
           ),
+
+          const SizedBox(height: 12),
+
+          // Action Buttons Row
+          Row(
+            children: [
+              // Link to Stock Button
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: isLinkedToStock 
+                      ? null 
+                      : () => _showStockLinkingDialog(index),
+                  icon: Icon(
+                    isLinkedToStock ? Icons.check_circle : Icons.link,
+                    size: 16,
+                    color: isLinkedToStock 
+                        ? Colors.green 
+                        : const Color(0xFFFF5B9E),
+                  ),
+                  label: Text(
+                    isLinkedToStock ? 'Linked' : 'Link to Stock',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: isLinkedToStock 
+                          ? Colors.green 
+                          : const Color(0xFFFF5B9E),
+                    ),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    side: BorderSide(
+                      color: isLinkedToStock 
+                          ? Colors.green 
+                          : const Color(0xFFFF5B9E),
+                    ),
+                    padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                  ),
+                ),
+              ),
+              
+              const SizedBox(width: 8),
+
+              // Optional Toggle
+              Expanded(
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Checkbox(
+                      value: ingredient['isOptional'] ?? false,
+                      onChanged: (value) {
+                        setState(() {
+                          _ingredients[index]['isOptional'] = value ?? false;
+                        });
+                      },
+                      activeColor: const Color(0xFFFF5B9E),
+                    ),
+                    const Text(
+                      'Optional',
+                      style: TextStyle(fontSize: 12),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ],
       ),
     );
@@ -737,28 +1125,98 @@ class _EditRecipePageState extends State<EditRecipePage>
   Widget _buildAddIngredientButton() {
     return Container(
       padding: const EdgeInsets.all(16),
-      child: ElevatedButton.icon(
-        onPressed: () {
-          setState(() {
-            _ingredients.add({
-              'name': '',
-              'amount': '',
-              'unit': '',
-              'category': 'basic',
-              'isOptional': false,
-              'estimatedPrice': {'tesco': 0.0, 'mydin': 0.0, 'giant': 0.0},
-            });
-          });
-        },
-        icon: const Icon(Icons.add),
-        label: const Text('Add Ingredient'),
-        style: ElevatedButton.styleFrom(
-          backgroundColor: const Color(0xFFFF5B9E),
-          foregroundColor: Colors.white,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(25),
+      child: Column(
+        children: [
+          // Add Ingredient Button
+          ElevatedButton.icon(
+            onPressed: () {
+              setState(() {
+                _ingredients.add({
+                  'name': '',
+                  'amount': '',
+                  'unit': '',
+                  'category': 'basic',
+                  'isOptional': false,
+                  'estimatedPrice': {'tesco': 0.0, 'mydin': 0.0, 'giant': 0.0},
+                  // Stock linking fields
+                  'linkedStockId': null,
+                  'linkedStockName': null,
+                  'linkedStockPrice': null,
+                  'linkedStockUnit': null,
+                  'linkedStockCategory': null,
+                  'linkedStockAvailable': null,
+                });
+              });
+            },
+            icon: const Icon(Icons.add),
+            label: const Text('Add Ingredient'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFFF5B9E),
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(25),
+              ),
+              minimumSize: const Size(double.infinity, 45),
+            ),
           ),
-        ),
+          
+          const SizedBox(height: 8),
+          
+          // Stock linking status
+          FutureBuilder<Map<String, dynamic>>(
+            future: _getIngredientStockStatus(),
+            builder: (context, snapshot) {
+              if (!snapshot.hasData) return const SizedBox.shrink();
+              
+              final status = snapshot.data!;
+              final linkedCount = status['linkedCount'] as int;
+              final totalCount = status['totalCount'] as int;
+              
+              if (totalCount == 0) return const SizedBox.shrink();
+              
+              return Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: linkedCount == totalCount 
+                      ? Colors.green.withOpacity(0.1)
+                      : Colors.orange.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: linkedCount == totalCount 
+                        ? Colors.green.withOpacity(0.3)
+                        : Colors.orange.withOpacity(0.3),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      linkedCount == totalCount 
+                          ? Icons.check_circle 
+                          : Icons.link,
+                      size: 16,
+                      color: linkedCount == totalCount 
+                          ? Colors.green 
+                          : Colors.orange,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Stock Links: $linkedCount / $totalCount ingredients linked',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: linkedCount == totalCount 
+                              ? Colors.green 
+                              : Colors.orange,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+        ],
       ),
     );
   }
