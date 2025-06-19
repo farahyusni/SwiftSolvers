@@ -10,6 +10,7 @@ import '../../services/stock_service.dart';
 import 'edit_stock_item_page.dart';
 import '../../helpers/auth_helper.dart'; // Add this import
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'order_management_page.dart';
 
 class SellerHomePage extends StatefulWidget {
   const SellerHomePage({Key? key}) : super(key: key);
@@ -1278,32 +1279,180 @@ class _SellerHomePageState extends State<SellerHomePage> {
   }
 
   Widget _buildOrdersContent() {
-    return const Expanded(
-      child: Center(
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.all(16),
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              Icons.shopping_bag_outlined,
-              size: 64,
-              color: Color(0xFF8B8B8B),
-            ),
-            SizedBox(height: 16),
-            Text(
-              'Orders Management',
-              style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.w600,
-                color: Color(0xFF8B8B8B),
+            // Orders overview cards
+            Expanded(
+              flex: 1,
+              child: StreamBuilder<QuerySnapshot>(
+                stream:
+                    FirebaseFirestore.instance.collection('orders').snapshots(),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(
+                      child: CircularProgressIndicator(
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                          Color(0xFFFF5B9E),
+                        ),
+                      ),
+                    );
+                  }
+
+                  if (snapshot.hasError) {
+                    return const Center(child: Text('Error loading orders'));
+                  }
+
+                  // Count orders by status
+                  Map<String, int> statusCounts = {
+                    'pending': 0,
+                    'processing': 0,
+                    'ready': 0,
+                    'delivered': 0,
+                  };
+
+                  if (snapshot.hasData) {
+                    for (var doc in snapshot.data!.docs) {
+                      final data = doc.data() as Map<String, dynamic>;
+                      final status = data['status'] as String? ?? 'pending';
+                      if (statusCounts.containsKey(status)) {
+                        statusCounts[status] = statusCounts[status]! + 1;
+                      }
+                    }
+                  }
+
+                  return GridView.count(
+                    crossAxisCount: 2,
+                    crossAxisSpacing: 16,
+                    mainAxisSpacing: 16,
+                    children: [
+                      _buildOrderStatusCard(
+                        'New Orders',
+                        statusCounts['pending']!,
+                        Icons.new_releases,
+                        Colors.orange,
+                      ),
+                      _buildOrderStatusCard(
+                        'Processing',
+                        statusCounts['processing']!,
+                        Icons.hourglass_empty,
+                        Colors.blue,
+                      ),
+                      _buildOrderStatusCard(
+                        'Ready',
+                        statusCounts['ready']!,
+                        Icons.check_circle,
+                        Colors.green,
+                      ),
+                      _buildOrderStatusCard(
+                        'Delivered',
+                        statusCounts['delivered']!,
+                        Icons.local_shipping,
+                        Colors.purple,
+                      ),
+                    ],
+                  );
+                },
               ),
             ),
-            SizedBox(height: 8),
-            Text(
-              'Coming Soon',
-              style: TextStyle(fontSize: 16, color: Color(0xFF8B8B8B)),
+
+            const SizedBox(height: 20),
+
+            // Manage Orders Button
+            SizedBox(
+              width: double.infinity,
+              height: 56,
+              child: ElevatedButton(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const OrderManagementPage(),
+                    ),
+                  );
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFFF5B9E),
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  elevation: 2,
+                ),
+                child: const Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.manage_history, size: 24),
+                    SizedBox(width: 8),
+                    Text(
+                      'Manage Orders',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildOrderStatusCard(
+    String title,
+    int count,
+    IconData icon,
+    Color color,
+  ) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 5,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(icon, color: color, size: 28),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            count.toString(),
+            style: const TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+              color: Colors.black,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            title,
+            style: TextStyle(
+              fontSize: 12,
+              color: Colors.grey[600],
+              fontWeight: FontWeight.w500,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ],
       ),
     );
   }
