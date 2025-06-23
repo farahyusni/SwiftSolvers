@@ -33,6 +33,7 @@ class _ShoppingCartViewState extends State<ShoppingCartView> {
       cartViewModel.loadCart().then((_) {
         if (mounted) {
           setState(() {
+            // Auto-select ALL items - they're in cart because user doesn't have them
             _selectedItemIds = cartViewModel.cart.items.map((item) => item.id).toSet();
             _selectAll = _selectedItemIds.isNotEmpty;
           });
@@ -47,7 +48,8 @@ class _ShoppingCartViewState extends State<ShoppingCartView> {
         _selectedItemIds.clear();
         _selectAll = false;
       } else {
-        _selectedItemIds = cartViewModel.cart.items.map((item) => item.id).toSet();
+        _selectedItemIds =
+            cartViewModel.cart.items.map((item) => item.id).toSet();
         _selectAll = true;
       }
     });
@@ -65,17 +67,23 @@ class _ShoppingCartViewState extends State<ShoppingCartView> {
   }
 
   List<CartItem> _getSelectedItems(CartViewModel cartViewModel) {
-    return cartViewModel.cart.items.where((item) => _selectedItemIds.contains(item.id)).toList();
+    return cartViewModel.cart.items
+        .where((item) => _selectedItemIds.contains(item.id))
+        .toList();
   }
 
   double _getSelectedItemsTotal() {
     final cartViewModel = Provider.of<CartViewModel>(context, listen: false);
-    return _getSelectedItems(cartViewModel).fold(0.0, (sum, item) => sum + item.totalPrice);
+    return _getSelectedItems(
+      cartViewModel,
+    ).fold(0.0, (sum, item) => sum + item.totalPrice);
   }
 
   int _getSelectedItemsCount() {
     final cartViewModel = Provider.of<CartViewModel>(context, listen: false);
-    return _getSelectedItems(cartViewModel).fold(0, (sum, item) => sum + item.quantity);
+    return _getSelectedItems(
+      cartViewModel,
+    ).fold(0, (sum, item) => sum + item.quantity);
   }
 
   @override
@@ -109,9 +117,7 @@ class _ShoppingCartViewState extends State<ShoppingCartView> {
                       _buildSelectAllSection(cartViewModel),
 
                       // Cart items
-                      Expanded(
-                        child: _buildCartItems(context, cartViewModel),
-                      ),
+                      Expanded(child: _buildCartItems(context, cartViewModel)),
                     ],
                   ),
                 ),
@@ -131,17 +137,11 @@ class _ShoppingCartViewState extends State<ShoppingCartView> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          CircularProgressIndicator(
-            color: Color(0xFFFF5B9E),
-            strokeWidth: 3,
-          ),
+          CircularProgressIndicator(color: Color(0xFFFF5B9E), strokeWidth: 3),
           SizedBox(height: 16),
           Text(
             'Loading your cart...',
-            style: TextStyle(
-              fontSize: 16,
-              color: Colors.grey,
-            ),
+            style: TextStyle(fontSize: 16, color: Colors.grey),
           ),
         ],
       ),
@@ -186,17 +186,11 @@ class _ShoppingCartViewState extends State<ShoppingCartView> {
               children: [
                 const Text(
                   'Shopping Cart',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                  ),
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                 ),
                 Text(
                   '${cartViewModel.cart.items.length} types • ${cartViewModel.totalItems} items',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey[600],
-                  ),
+                  style: TextStyle(fontSize: 14, color: Colors.grey[600]),
                 ),
               ],
             ),
@@ -231,7 +225,11 @@ class _ShoppingCartViewState extends State<ShoppingCartView> {
                   border: Border.all(color: Colors.grey[300]!),
                 ),
                 child: IconButton(
-                  icon: const Icon(Icons.delete_outline, size: 20, color: Colors.red),
+                  icon: const Icon(
+                    Icons.delete_outline,
+                    size: 20,
+                    color: Colors.red,
+                  ),
                   onPressed: () => _showClearCartDialog(context, cartViewModel),
                 ),
               ),
@@ -267,10 +265,7 @@ class _ShoppingCartViewState extends State<ShoppingCartView> {
 
             const Text(
               'Your cart is empty',
-              style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-              ),
+              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
 
@@ -330,7 +325,10 @@ class _ShoppingCartViewState extends State<ShoppingCartView> {
     );
   }
 
-  Widget _buildStoreSelector(BuildContext context, CartViewModel cartViewModel) {
+  Widget _buildStoreSelector(
+    BuildContext context,
+    CartViewModel cartViewModel,
+  ) {
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 8, 16, 0),
       padding: const EdgeInsets.all(16),
@@ -353,11 +351,7 @@ class _ShoppingCartViewState extends State<ShoppingCartView> {
               color: const Color(0xFFFF5B9E).withOpacity(0.1),
               borderRadius: BorderRadius.circular(8),
             ),
-            child: const Icon(
-              Icons.store,
-              color: Color(0xFFFF5B9E),
-              size: 20,
-            ),
+            child: const Icon(Icons.store, color: Color(0xFFFF5B9E), size: 20),
           ),
           const SizedBox(width: 12),
 
@@ -383,12 +377,13 @@ class _ShoppingCartViewState extends State<ShoppingCartView> {
                     fontWeight: FontWeight.w600,
                     color: Colors.black,
                   ),
-                  items: cartViewModel.availableStores.map((store) {
-                    return DropdownMenuItem<String>(
-                      value: store['id'],
-                      child: Text(store['name']),
-                    );
-                  }).toList(),
+                  items:
+                      cartViewModel.availableStores.map((store) {
+                        return DropdownMenuItem<String>(
+                          value: store['id'],
+                          child: Text(store['name']),
+                        );
+                      }).toList(),
                   onChanged: (String? newStore) {
                     if (newStore != null) {
                       cartViewModel.changeStore(newStore);
@@ -399,11 +394,7 @@ class _ShoppingCartViewState extends State<ShoppingCartView> {
             ),
           ),
 
-          Icon(
-            Icons.info_outline,
-            size: 20,
-            color: Colors.grey[400],
-          ),
+          Icon(Icons.info_outline, size: 20, color: Colors.grey[400]),
         ],
       ),
     );
@@ -435,18 +426,17 @@ class _ShoppingCartViewState extends State<ShoppingCartView> {
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(6),
                 border: Border.all(
-                  color: _selectAll ? const Color(0xFFFF5B9E) : Colors.grey[300]!,
+                  color:
+                      _selectAll ? const Color(0xFFFF5B9E) : Colors.grey[300]!,
                   width: 2,
                 ),
-                color: _selectAll ? const Color(0xFFFF5B9E) : Colors.transparent,
+                color:
+                    _selectAll ? const Color(0xFFFF5B9E) : Colors.transparent,
               ),
-              child: _selectAll
-                  ? const Icon(
-                Icons.check,
-                color: Colors.white,
-                size: 16,
-              )
-                  : null,
+              child:
+                  _selectAll
+                      ? const Icon(Icons.check, color: Colors.white, size: 16)
+                      : null,
             ),
           ),
           const SizedBox(width: 12),
@@ -456,7 +446,7 @@ class _ShoppingCartViewState extends State<ShoppingCartView> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Select All Items',
+                  'Select Items to Purchase',
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
@@ -464,11 +454,8 @@ class _ShoppingCartViewState extends State<ShoppingCartView> {
                   ),
                 ),
                 Text(
-                  '${cartViewModel.cart.items.length} types available',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey[600],
-                  ),
+                  '${cartViewModel.cart.items.length} types available • Select to checkout',
+                  style: TextStyle(fontSize: 12, color: Colors.grey[600]),
                 ),
               ],
             ),
@@ -578,8 +565,16 @@ class _ShoppingCartViewState extends State<ShoppingCartView> {
               Padding(
                 padding: const EdgeInsets.all(16),
                 child: Column(
-                  children: recipeItems.map((item) =>
-                      _buildEnhancedCartItemTile(context, item, cartViewModel)).toList(),
+                  children:
+                      recipeItems
+                          .map(
+                            (item) => _buildEnhancedCartItemTile(
+                              context,
+                              item,
+                              cartViewModel,
+                            ),
+                          )
+                          .toList(),
                 ),
               ),
             ],
@@ -589,17 +584,27 @@ class _ShoppingCartViewState extends State<ShoppingCartView> {
     );
   }
 
-  Widget _buildEnhancedCartItemTile(BuildContext context, CartItem item, CartViewModel cartViewModel) {
+  Widget _buildEnhancedCartItemTile(
+    BuildContext context,
+    CartItem item,
+    CartViewModel cartViewModel,
+  ) {
     final isSelected = _selectedItemIds.contains(item.id);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: isSelected ? const Color(0xFFFF5B9E).withOpacity(0.05) : Colors.grey[50],
+        color:
+            isSelected
+                ? const Color(0xFFFF5B9E).withOpacity(0.05)
+                : Colors.grey[50],
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: isSelected ? const Color(0xFFFF5B9E).withOpacity(0.3) : Colors.transparent,
+          color:
+              isSelected
+                  ? const Color(0xFFFF5B9E).withOpacity(0.3)
+                  : Colors.transparent,
           width: 1,
         ),
       ),
@@ -614,18 +619,17 @@ class _ShoppingCartViewState extends State<ShoppingCartView> {
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(4),
                 border: Border.all(
-                  color: isSelected ? const Color(0xFFFF5B9E) : Colors.grey[400]!,
+                  color:
+                      isSelected ? const Color(0xFFFF5B9E) : Colors.grey[400]!,
                   width: 2,
                 ),
-                color: isSelected ? const Color(0xFFFF5B9E) : Colors.transparent,
+                color:
+                    isSelected ? const Color(0xFFFF5B9E) : Colors.transparent,
               ),
-              child: isSelected
-                  ? const Icon(
-                Icons.check,
-                color: Colors.white,
-                size: 12,
-              )
-                  : null,
+              child:
+                  isSelected
+                      ? const Icon(Icons.check, color: Colors.white, size: 12)
+                      : null,
             ),
           ),
           const SizedBox(width: 12),
@@ -716,7 +720,8 @@ class _ShoppingCartViewState extends State<ShoppingCartView> {
                 style: TextStyle(
                   fontSize: 15,
                   fontWeight: FontWeight.bold,
-                  color: isSelected ? const Color(0xFFFF5B9E) : Colors.grey[400],
+                  color:
+                      isSelected ? const Color(0xFFFF5B9E) : Colors.grey[400],
                 ),
               ),
               if (item.quantity > 1)
@@ -734,7 +739,10 @@ class _ShoppingCartViewState extends State<ShoppingCartView> {
     );
   }
 
-  Widget _buildStickyCheckoutSection(BuildContext context, CartViewModel cartViewModel) {
+  Widget _buildStickyCheckoutSection(
+    BuildContext context,
+    CartViewModel cartViewModel,
+  ) {
     final selectedItemsTotal = _getSelectedItemsTotal();
     final selectedItemsCount = _getSelectedItemsCount();
     final hasSelectedItems = _selectedItemIds.isNotEmpty;
@@ -763,10 +771,7 @@ class _ShoppingCartViewState extends State<ShoppingCartView> {
                   children: [
                     Text(
                       'Selected Items ($selectedItemsCount)',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.grey[600],
-                      ),
+                      style: TextStyle(fontSize: 14, color: Colors.grey[600]),
                     ),
                     Text(
                       'RM${selectedItemsTotal.toStringAsFixed(2)}',
@@ -839,9 +844,10 @@ class _ShoppingCartViewState extends State<ShoppingCartView> {
                 width: double.infinity,
                 height: 56,
                 child: ElevatedButton(
-                  onPressed: hasSelectedItems
-                      ? () => _navigateToCheckout(context, cartViewModel)
-                      : null,
+                  onPressed:
+                      hasSelectedItems
+                          ? () => _navigateToCheckout(context, cartViewModel)
+                          : null,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFFFF5B9E),
                     foregroundColor: Colors.white,
@@ -868,7 +874,7 @@ class _ShoppingCartViewState extends State<ShoppingCartView> {
                         const Icon(Icons.check_circle_outline, size: 20),
                         const SizedBox(width: 8),
                         const Text(
-                          'Select items to continue',
+                          'Select items to purchase',
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w600,
@@ -895,7 +901,9 @@ class _ShoppingCartViewState extends State<ShoppingCartView> {
             borderRadius: BorderRadius.circular(16),
           ),
           title: const Text('Clear Cart'),
-          content: const Text('Are you sure you want to remove all items from your cart?'),
+          content: const Text(
+            'Are you sure you want to remove all items from your cart?',
+          ),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
