@@ -354,31 +354,42 @@ class _SellerHomePageState extends State<SellerHomePage> {
     }
   }
 
-  // Calculate total sales for current user
   Future<double> _getTotalSales() async {
-    try {
-      double total = 0.0;
-      final snapshot =
-          await FirebaseFirestore.instance
-              .collection('orders')
-              .where(
-                'sellerId',
-                isEqualTo: _currentUserId,
-              ) // Filter by current user
-              .get();
-
-      for (var doc in snapshot.docs) {
-        final data = doc.data();
-        if (data['status'] == 'paid') {
-          total += (data['totalAmount'] ?? 0).toDouble();
-        }
-      }
-      return total;
-    } catch (e) {
-      print('❌ Error calculating total sales: $e');
+  try {
+    if (_currentUserId == null) {
+      print('⚠️ User ID is null');
       return 0.0;
     }
+
+    double total = 0.0;
+
+    final snapshot = await FirebaseFirestore.instance
+        .collection('orders')
+        .where('sellerId', isEqualTo: _currentUserId)
+        .get();
+
+    print('📦 Found ${snapshot.docs.length} orders for user $_currentUserId');
+
+    for (var doc in snapshot.docs) {
+      final data = doc.data();
+      print('📄 Order: ${doc.id} → paymentStatus: ${data['paymentStatus']} | totalAmount: ${data['totalAmount']}');
+
+      if ((data['paymentStatus']?.toString().toLowerCase() ?? '') == 'paid') {
+        final amount = (data['totalAmount'] ?? 0).toDouble();
+        print('✅ Adding RM${amount.toStringAsFixed(2)}');
+        total += amount;
+      }
+    }
+
+    print('✅ Final total: RM${total.toStringAsFixed(2)}');
+    return total;
+  } catch (e) {
+    print('❌ Error calculating total sales: $e');
+    return 0.0;
   }
+}
+
+
 
   // Build quick stats widget
   Widget _buildQuickStats() {
