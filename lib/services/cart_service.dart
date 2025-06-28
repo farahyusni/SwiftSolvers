@@ -35,8 +35,8 @@ class CartService {
 
       // Only add unticked (unchecked) ingredients
       for (int i = 0; i < ingredients.length; i++) {
-        if (i < checkedIngredients.length && !checkedIngredients[i]) {
-          // This ingredient is NOT checked, so user doesn't have it
+        if (i < checkedIngredients.length && checkedIngredients[i]) {
+          // This ingredient is checked(true), so user doesn't have it
           final ingredient = ingredients[i];
           final cartItem = CartItem.fromIngredient(
             ingredient: ingredient,
