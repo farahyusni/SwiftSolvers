@@ -1,8 +1,13 @@
+// lib/views/buyer/buyer_home_page.dart - Simplified with notifications
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:yum_cart/services/recipe_service.dart';
 import 'package:yum_cart/views/buyer/widgets/categories_bottom_sheet.dart';
 import '../../viewmodels/cart_viewmodel.dart';
+import '../../services/notification_service.dart';
+import '../../models/notification_models.dart';
+import '../../services/order_notification_bridge.dart';
+
 
 class BuyerHomePage extends StatefulWidget {
   const BuyerHomePage({Key? key}) : super(key: key);
@@ -11,7 +16,8 @@ class BuyerHomePage extends StatefulWidget {
   _BuyerHomePageState createState() => _BuyerHomePageState();
 }
 
-class _BuyerHomePageState extends State<BuyerHomePage> {
+class _BuyerHomePageState extends State<BuyerHomePage>
+    with TickerProviderStateMixin {
   final RecipeService _recipeService = RecipeService();
   List<Map<String, dynamic>> _recipes = [];
   List<Map<String, dynamic>> _allRecipes = []; // Store all recipes
@@ -19,14 +25,88 @@ class _BuyerHomePageState extends State<BuyerHomePage> {
   String _searchQuery = '';
   String? _selectedCategory; // Track selected category
 
+  // Notification system components
+  late AnimationController _bellController;
+  late Animation<double> _bellAnimation;
+
+  final OrderNotificationBridge _notificationBridge = OrderNotificationBridge();
+
   @override
   void initState() {
     super.initState();
     _loadRecipes();
+    _initializeNotifications();
+
     // Load cart when page initializes
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<CartViewModel>().loadCart();
     });
+  }
+
+  Future<void> _initializeNotifications() async {
+    try {
+      print('🔔 Initializing buyer notifications...');
+
+      // Initialize bell animation
+      _bellController = AnimationController(
+        duration: const Duration(milliseconds: 1000),
+        vsync: this,
+      );
+
+      _bellAnimation = Tween<double>(
+        begin: 0.0,
+        end: 1.0,
+      ).animate(CurvedAnimation(
+        parent: _bellController,
+        curve: Curves.elasticOut,
+      ));
+
+      // Initialize notification service
+      final notificationService = context.read<NotificationService>();
+      await notificationService.initialize();
+      await notificationService.requestPermission();
+
+      // 🔔 START LISTENING FOR ORDER STATUS UPDATES
+      _notificationBridge.startListening(isSeller: false);
+
+      print('✅ Buyer notifications initialized successfully');
+
+      // Add sample notifications for demo (keep your existing code)
+     // _addSampleNotifications();
+
+    } catch (e) {
+      print('❌ Error initializing notifications: $e');
+    }
+  }
+
+  // void _addSampleNotifications() {
+  //   final notificationService = context.read<NotificationService>();
+  //
+  //   // Add sample notifications for demo purposes
+  //   Future.delayed(const Duration(seconds: 2), () {
+  //     if (mounted) {
+  //       notificationService.createPromotionalNotification(
+  //         title: 'Welcome to YumCart! 🎉',
+  //         message: 'Discover delicious recipes and get groceries delivered!',
+  //       );
+  //     }
+  //   });
+  //
+  //   Future.delayed(const Duration(seconds: 5), () {
+  //     if (mounted) {
+  //       notificationService.createPromotionalNotification(
+  //         title: 'Fresh Vegetables Sale',
+  //         message: '20% off on all fresh vegetables this weekend!',
+  //       );
+  //     }
+  //   });
+  // }
+
+  @override
+  void dispose() {
+    _bellController.dispose();
+    _notificationBridge.stopListening();
+    super.dispose();
   }
 
   Future<void> _loadRecipes() async {
@@ -54,7 +134,7 @@ class _BuyerHomePageState extends State<BuyerHomePage> {
 
     try {
       List<Map<String, dynamic>> filteredRecipes;
-      
+
       if (category == null) {
         // Show all recipes
         filteredRecipes = _allRecipes;
@@ -99,6 +179,24 @@ class _BuyerHomePageState extends State<BuyerHomePage> {
     );
   }
 
+  void _showNotificationPanel() {
+    final notificationService = context.read<NotificationService>();
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => NotificationPanel(
+        notifications: notificationService.notifications,
+        onNotificationTap: (notificationId) {
+          notificationService.markAsRead(notificationId);
+        },
+        onMarkAllAsRead: () {
+          notificationService.markAllAsRead();
+        },
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -133,9 +231,9 @@ class _BuyerHomePageState extends State<BuyerHomePage> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-           // Empty container to maintain spacing (where back button was)
+          // Empty space to maintain spacing (where back button was)
           const SizedBox(width: 24),
-          
+
           // YumCart logo
           Row(
             children: [
@@ -164,12 +262,16 @@ class _BuyerHomePageState extends State<BuyerHomePage> {
             ],
           ),
 
-          // Action buttons (cart, favorites, profile)
+          // Action buttons (notifications, cart, favorites, profile)
           Row(
+            mainAxisSize: MainAxisSize.min,
             children: [
+              // Notification bell with badge
+              _buildNotificationButton(),
+
               // Shopping Cart button with badge
               _buildCartButton(context),
-              
+
               // Favorites button
               IconButton(
                 icon: const Icon(
@@ -181,7 +283,7 @@ class _BuyerHomePageState extends State<BuyerHomePage> {
                 },
                 tooltip: 'My Favorites',
               ),
-              
+
               // Profile button
               IconButton(
                 icon: const Icon(Icons.person_outline),
@@ -197,11 +299,63 @@ class _BuyerHomePageState extends State<BuyerHomePage> {
     );
   }
 
+  Widget _buildNotificationButton() {
+    return Consumer<NotificationService>(
+      builder: (context, notificationService, child) {
+        return GestureDetector(
+          onTap: _showNotificationPanel,
+          child: Container(
+            padding: const EdgeInsets.all(8),
+            margin: const EdgeInsets.only(right: 4),
+            child: Stack(
+              children: [
+                const Icon(
+                  Icons.notifications_outlined,
+                  color: Color(0xFFFF5B9E),
+                  size: 24,
+                ),
+                // Notification badge
+                if (notificationService.unreadCount > 0)
+                  Positioned(
+                    right: 0,
+                    top: 0,
+                    child: Container(
+                      padding: const EdgeInsets.all(2),
+                      decoration: BoxDecoration(
+                        color: Colors.red,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.white, width: 1),
+                      ),
+                      constraints: const BoxConstraints(
+                        minWidth: 16,
+                        minHeight: 16,
+                      ),
+                      child: Text(
+                        notificationService.unreadCount > 99
+                            ? '99+'
+                            : notificationService.unreadCount.toString(),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   Widget _buildCartButton(BuildContext context) {
     return Consumer<CartViewModel>(
       builder: (context, cartViewModel, child) {
         final itemCount = cartViewModel.totalItems;
-        
+
         return Stack(
           children: [
             IconButton(
@@ -214,7 +368,7 @@ class _BuyerHomePageState extends State<BuyerHomePage> {
               },
               tooltip: 'Shopping Cart',
             ),
-            
+
             // Badge showing item count
             if (itemCount > 0)
               Positioned(
@@ -266,15 +420,15 @@ class _BuyerHomePageState extends State<BuyerHomePage> {
               child: Container(
                 padding: const EdgeInsets.all(4),
                 decoration: BoxDecoration(
-                  color: _selectedCategory != null 
-                      ? const Color(0xFFFF5B9E).withOpacity(0.1) 
+                  color: _selectedCategory != null
+                      ? const Color(0xFFFF5B9E).withOpacity(0.1)
                       : Colors.transparent,
                   borderRadius: BorderRadius.circular(4),
                 ),
                 child: Icon(
                   Icons.menu,
-                  color: _selectedCategory != null 
-                      ? const Color(0xFFFF5B9E) 
+                  color: _selectedCategory != null
+                      ? const Color(0xFFFF5B9E)
                       : Colors.grey,
                 ),
               ),
@@ -329,10 +483,10 @@ class _BuyerHomePageState extends State<BuyerHomePage> {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(
+                const Icon(
                   Icons.filter_list,
                   size: 16,
-                  color: const Color(0xFFFF5B9E),
+                  color: Color(0xFFFF5B9E),
                 ),
                 const SizedBox(width: 6),
                 Text(
@@ -383,7 +537,7 @@ class _BuyerHomePageState extends State<BuyerHomePage> {
             ),
             const SizedBox(height: 16),
             Text(
-              _selectedCategory != null 
+              _selectedCategory != null
                   ? 'No recipes found in $_selectedCategory'
                   : 'No recipes found',
               style: const TextStyle(fontSize: 16, color: Colors.grey),
@@ -503,5 +657,248 @@ class _BuyerHomePageState extends State<BuyerHomePage> {
         ),
       ),
     );
+  }
+}
+
+// ====================================================================
+// NOTIFICATION PANEL WIDGET
+// ====================================================================
+
+class NotificationPanel extends StatelessWidget {
+  final List<NotificationModel> notifications;
+  final Function(String) onNotificationTap;
+  final VoidCallback onMarkAllAsRead;
+
+  const NotificationPanel({
+    Key? key,
+    required this.notifications,
+    required this.onNotificationTap,
+    required this.onMarkAllAsRead,
+  }) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    final unreadCount = notifications.where((n) => !n.isRead).length;
+
+    return Container(
+      height: MediaQuery.of(context).size.height * 0.8,
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.only(
+          topLeft: Radius.circular(20),
+          topRight: Radius.circular(20),
+        ),
+      ),
+      child: Column(
+        children: [
+          // Handle bar
+          Container(
+            margin: const EdgeInsets.symmetric(vertical: 12),
+            width: 40,
+            height: 4,
+            decoration: BoxDecoration(
+              color: Colors.grey[300],
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+
+          // Header
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Notifications',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    if (unreadCount > 0)
+                      Text(
+                        '$unreadCount unread',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.grey[600],
+                        ),
+                      ),
+                  ],
+                ),
+                if (unreadCount > 0)
+                  TextButton(
+                    onPressed: () {
+                      onMarkAllAsRead();
+                      Navigator.pop(context);
+                    },
+                    child: const Text(
+                      'Mark all as read',
+                      style: TextStyle(
+                        color: Color(0xFFFF5B9E),
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+
+          const Divider(),
+
+          // Notifications list
+          Expanded(
+            child: notifications.isEmpty
+                ? const Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.notifications_none,
+                    size: 64,
+                    color: Colors.grey,
+                  ),
+                  SizedBox(height: 16),
+                  Text(
+                    'No notifications yet',
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: Colors.grey,
+                    ),
+                  ),
+                ],
+              ),
+            )
+                : ListView.builder(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              itemCount: notifications.length,
+              itemBuilder: (context, index) {
+                final notification = notifications[index];
+                return _buildNotificationTile(context, notification);
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildNotificationTile(BuildContext context, NotificationModel notification) {
+    return GestureDetector(
+      onTap: () {
+        onNotificationTap(notification.id);
+        Navigator.pop(context);
+
+        // Navigate to order details if it's an order notification
+        if (notification.orderId != null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Opening order #${notification.orderId}'),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+      },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: notification.isRead
+              ? Colors.white
+              : const Color(0xFFFF5B9E).withOpacity(0.05),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: notification.isRead
+                ? Colors.grey.withOpacity(0.2)
+                : const Color(0xFFFF5B9E).withOpacity(0.2),
+          ),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Icon
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: notification.color.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(
+                notification.icon,
+                color: notification.color,
+                size: 20,
+              ),
+            ),
+
+            const SizedBox(width: 12),
+
+            // Content
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          notification.title,
+                          style: TextStyle(
+                            fontWeight: notification.isRead
+                                ? FontWeight.w500
+                                : FontWeight.bold,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ),
+                      if (!notification.isRead)
+                        Container(
+                          width: 8,
+                          height: 8,
+                          decoration: const BoxDecoration(
+                            color: Color(0xFFFF5B9E),
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    notification.message,
+                    style: TextStyle(
+                      color: Colors.grey[600],
+                      fontSize: 12,
+                      height: 1.3,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    _formatTimestamp(notification.timestamp),
+                    style: TextStyle(
+                      color: Colors.grey[400],
+                      fontSize: 11,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _formatTimestamp(DateTime timestamp) {
+    final now = DateTime.now();
+    final difference = now.difference(timestamp);
+
+    if (difference.inMinutes < 60) {
+      return '${difference.inMinutes}m ago';
+    } else if (difference.inHours < 24) {
+      return '${difference.inHours}h ago';
+    } else {
+      return '${difference.inDays}d ago';
+    }
   }
 }

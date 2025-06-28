@@ -4,14 +4,15 @@ import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'viewmodels/auth_viewmodel.dart';
 import 'viewmodels/cart_viewmodel.dart';
+import 'services/notification_service.dart'; // Add this import
 import 'utils/route_generator.dart';
 import 'services/navigation_service.dart';
+import 'services/notification_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   await Firebase.initializeApp();
-
 
   // Initialize Supabase
   await Supabase.initialize(
@@ -29,6 +30,9 @@ class MyApp extends StatelessWidget {
       providers: [
         ChangeNotifierProvider(create: (_) => AuthViewModel()),
         ChangeNotifierProvider(create: (_) => CartViewModel()),
+        // Add the notification service provider
+        ChangeNotifierProvider(create: (_) => NotificationService()),
+
         // Add other providers here
       ],
       child: MaterialApp(
@@ -37,6 +41,17 @@ class MyApp extends StatelessWidget {
         navigatorKey: NavigationService.navigatorKey,
         onGenerateRoute: RouteGenerator.generateRoute,
         initialRoute: '/login',
+        theme: ThemeData(
+          primarySwatch: Colors.pink,
+          primaryColor: const Color(0xFFFF5B9E),
+          // Add consistent theming for notifications
+          snackBarTheme: const SnackBarThemeData(
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.all(Radius.circular(8)),
+            ),
+          ),
+        ),
       ),
     );
   }

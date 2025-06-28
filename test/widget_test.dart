@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:yum_cart/main.dart';
 import 'package:yum_cart/viewmodels/auth_viewmodel.dart';
 
+
 void main() {
   testWidgets('Login page smoke test', (WidgetTester tester) async {
     // Build our app and trigger a frame.

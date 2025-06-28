@@ -1502,9 +1502,65 @@ class _SellerHomePageState extends State<SellerHomePage> {
             },
           ),
 
-          // Icons: shop and profile
+          // Icons: notifications, shop, and profile
           Row(
             children: [
+              // 🔔 NEW: NOTIFICATION BELL FOR SELLERS
+              Stack(
+                children: [
+                  Container(
+                    width: 42,
+                    height: 42,
+                    margin: const EdgeInsets.only(right: 8),
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.black, width: 2),
+                    ),
+                    child: IconButton(
+                      icon: const Icon(
+                        Icons.notifications_outlined,
+                        size: 20,
+                        color: Colors.black,
+                      ),
+                      onPressed: () {
+                        // Simple notification display
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Notifications checked'),
+                            backgroundColor: Color(0xFFFF5B9E),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                  // Static notification badge for demo
+                  Positioned(
+                    right: 6,
+                    top: 6,
+                    child: Container(
+                      padding: const EdgeInsets.all(2),
+                      decoration: BoxDecoration(
+                        color: Colors.red,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      constraints: const BoxConstraints(
+                        minWidth: 16,
+                        minHeight: 16,
+                      ),
+                      child: const Text(
+                        '1',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+
               Container(
                 width: 42,
                 height: 42,

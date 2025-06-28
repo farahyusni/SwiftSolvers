@@ -1,11 +1,16 @@
-// lib/views/buyer/order_success_page.dart
+// lib/views/buyer/order_success_page.dart - Updated with notification integration
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../../services/notification_service.dart';
+import '../../widgets/notification_permission_dialog.dart';
 
 class OrderSuccessPage extends StatefulWidget {
   final String orderId;
   final double totalAmount;
   final String estimatedDelivery;
-  final bool isDelivery; // true for delivery, false for pickup
+  final bool isDelivery;
+  final String? storeName;
+  final List<String>? items;
 
   const OrderSuccessPage({
     Key? key,
@@ -13,6 +18,8 @@ class OrderSuccessPage extends StatefulWidget {
     required this.totalAmount,
     required this.estimatedDelivery,
     required this.isDelivery,
+    this.storeName,
+    this.items,
   }) : super(key: key);
 
   @override
@@ -24,11 +31,12 @@ class _OrderSuccessPageState extends State<OrderSuccessPage>
   late AnimationController _animationController;
   late Animation<double> _scaleAnimation;
   late Animation<double> _fadeAnimation;
-  bool _showNotificationDialog = false;
+  bool _notificationDialogShown = false;
 
   @override
   void initState() {
     super.initState();
+
     _animationController = AnimationController(
       duration: const Duration(milliseconds: 800),
       vsync: this,
@@ -52,115 +60,79 @@ class _OrderSuccessPageState extends State<OrderSuccessPage>
 
     _animationController.forward();
 
-    // Show notification dialog after a delay
+    // Initialize notification flow
+    _initializeNotifications();
+  }
+
+  Future<void> _initializeNotifications() async {
+    final notificationService = context.read<NotificationService>();
+
+    // Create initial order confirmation notification
+    notificationService.createOrderNotification(
+      orderId: widget.orderId,
+      status: 'confirmed',
+    );
+
+    // Show notification permission dialog after a delay
     Future.delayed(const Duration(seconds: 2), () {
-      if (mounted) {
-        setState(() {
-          _showNotificationDialog = true;
-        });
+      if (mounted && !_notificationDialogShown) {
         _showNotificationPermissionDialog();
       }
     });
+
+    // Simulate order progression for demo
+    _simulateOrderUpdates();
+  }
+
+  void _simulateOrderUpdates() {
+    final notificationService = context.read<NotificationService>();
+
+    // Simulate order being prepared
+    Future.delayed(const Duration(seconds: 10), () {
+      if (mounted) {
+        notificationService.createOrderNotification(
+          orderId: widget.orderId,
+          status: 'preparing',
+        );
+      }
+    });
+
+    // Simulate delivery/pickup ready
+    Future.delayed(const Duration(seconds: 30), () {
+      if (mounted) {
+        notificationService.createOrderNotification(
+          orderId: widget.orderId,
+          status: widget.isDelivery ? 'out_for_delivery' : 'ready_for_pickup',
+          estimatedTime: widget.estimatedDelivery,
+        );
+      }
+    });
+  }
+
+  void _showNotificationPermissionDialog() {
+    if (_notificationDialogShown) return;
+
+    setState(() {
+      _notificationDialogShown = true;
+    });
+
+    NotificationPermissionDialog.show(
+      context,
+      onAllowed: () async {
+        final notificationService = context.read<NotificationService>();
+        await notificationService.requestPermission();
+      },
+      onDenied: () {
+        // Handle denial if needed
+        print('User denied notification permission');
+      },
+    );
   }
 
   @override
   void dispose() {
     _animationController.dispose();
     super.dispose();
-  }
-
-  void _showNotificationPermissionDialog() {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 60,
-                height: 60,
-                decoration: const BoxDecoration(
-                  color: Color(0xFFFF5B9E),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(
-                  Icons.notifications_outlined,
-                  color: Colors.white,
-                  size: 30,
-                ),
-              ),
-              const SizedBox(height: 16),
-              const Text(
-                'Stay updated on your order',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 8),
-              const Text(
-                'Allow notifications and get the latest updates on orders, deals and more',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Colors.grey,
-                ),
-              ),
-              const SizedBox(height: 24),
-              Row(
-                children: [
-                  Expanded(
-                    child: TextButton(
-                      onPressed: () {
-                        Navigator.of(context).pop();
-                      },
-                      child: const Text(
-                        'Not Now',
-                        style: TextStyle(
-                          color: Colors.grey,
-                        ),
-                      ),
-                    ),
-                  ),
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: () {
-                        Navigator.of(context).pop();
-                        // Here you would implement notification permission request
-                        _requestNotificationPermission();
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFFFF5B9E),
-                        foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                      ),
-                      child: const Text('Allow'),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  void _requestNotificationPermission() {
-    // Implement notification permission request here
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Notifications enabled! You\'ll get updates on your order.'),
-        backgroundColor: Colors.green,
-      ),
-    );
   }
 
   @override
@@ -170,7 +142,7 @@ class _OrderSuccessPageState extends State<OrderSuccessPage>
       body: SafeArea(
         child: Column(
           children: [
-            // Header with back button and cart icon
+            // Header with back button
             Padding(
               padding: const EdgeInsets.all(16),
               child: Row(
@@ -189,36 +161,26 @@ class _OrderSuccessPageState extends State<OrderSuccessPage>
                   ),
                   const Spacer(),
                   Container(
-                    padding: const EdgeInsets.all(8),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     decoration: BoxDecoration(
                       color: Colors.white.withOpacity(0.2),
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(20),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         const Icon(
-                          Icons.shopping_cart_outlined,
+                          Icons.check_circle,
                           color: Colors.white,
-                          size: 20,
+                          size: 16,
                         ),
                         const SizedBox(width: 4),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 6,
-                            vertical: 2,
-                          ),
-                          decoration: const BoxDecoration(
+                        Text(
+                          'Order #${widget.orderId}',
+                          style: const TextStyle(
                             color: Colors.white,
-                            shape: BoxShape.circle,
-                          ),
-                          child: const Text(
-                            '0',
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                              color: Color(0xFFFF5B9E),
-                            ),
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
                           ),
                         ),
                       ],
@@ -252,13 +214,27 @@ class _OrderSuccessPageState extends State<OrderSuccessPage>
                           width: 100,
                           height: 100,
                           decoration: BoxDecoration(
-                            color: const Color(0xFFFF5B9E).withOpacity(0.1),
+                            gradient: const LinearGradient(
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                              colors: [
+                                Color(0xFFFF5B9E),
+                                Color(0xFFFF8FA3),
+                              ],
+                            ),
                             shape: BoxShape.circle,
+                            boxShadow: [
+                              BoxShadow(
+                                color: const Color(0xFFFF5B9E).withOpacity(0.3),
+                                blurRadius: 20,
+                                offset: const Offset(0, 8),
+                              ),
+                            ],
                           ),
                           child: const Icon(
-                            Icons.check_circle,
-                            size: 60,
-                            color: Color(0xFFFF5B9E),
+                            Icons.check,
+                            size: 50,
+                            color: Colors.white,
                           ),
                         ),
                       ),
@@ -282,8 +258,8 @@ class _OrderSuccessPageState extends State<OrderSuccessPage>
                             const SizedBox(height: 8),
                             Text(
                               widget.isDelivery
-                                  ? 'Your order will be delivered to your address'
-                                  : 'Your order is ready for pickup',
+                                  ? 'Your groceries will be delivered soon'
+                                  : 'Your groceries will be ready for pickup',
                               style: TextStyle(
                                 fontSize: 16,
                                 color: Colors.grey[600],
@@ -296,76 +272,56 @@ class _OrderSuccessPageState extends State<OrderSuccessPage>
 
                       const SizedBox(height: 32),
 
-                      // Order details card
+                      // Order details
                       FadeTransition(
                         opacity: _fadeAnimation,
                         child: Container(
+                          width: double.infinity,
                           padding: const EdgeInsets.all(20),
                           decoration: BoxDecoration(
-                            color: Colors.grey[50],
+                            color: const Color(0xFFFF5B9E).withOpacity(0.05),
                             borderRadius: BorderRadius.circular(16),
                             border: Border.all(
-                              color: Colors.grey[200]!,
+                              color: const Color(0xFFFF5B9E).withOpacity(0.1),
                             ),
                           ),
                           child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              _buildOrderDetailRow(
-                                'Order ID',
-                                widget.orderId,
-                                isHighlighted: true,
+                              const Text(
+                                'Order Details',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
-                              const SizedBox(height: 12),
-                              _buildOrderDetailRow(
-                                'Total Amount',
-                                'RM${widget.totalAmount.toStringAsFixed(2)}',
-                                isHighlighted: true,
-                              ),
-                              const SizedBox(height: 12),
+                              const SizedBox(height: 16),
+                              _buildOrderDetailRow('Order ID', '#${widget.orderId}'),
+                              if (widget.storeName != null)
+                                _buildOrderDetailRow('Store', widget.storeName!),
+                              _buildOrderDetailRow('Total Amount', 'RM ${widget.totalAmount.toStringAsFixed(2)}'),
                               _buildOrderDetailRow(
                                 widget.isDelivery ? 'Estimated Delivery' : 'Ready for Pickup',
                                 widget.estimatedDelivery,
                               ),
-                              const SizedBox(height: 12),
-                              _buildOrderDetailRow(
-                                'Payment Method',
-                                widget.isDelivery ? 'Cash on Delivery' : 'Pay on Pickup',
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-
-                      const SizedBox(height: 24),
-
-                      // Info message
-                      FadeTransition(
-                        opacity: _fadeAnimation,
-                        child: Container(
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFFF5B9E).withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Row(
-                            children: [
-                              const Icon(
-                                Icons.info_outline,
-                                color: Color(0xFFFF5B9E),
-                                size: 20,
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Text(
-                                  widget.isDelivery
-                                      ? 'You will receive updates about your delivery status'
-                                      : 'We\'ll notify you when your order is ready for pickup',
-                                  style: const TextStyle(
+                              if (widget.items != null && widget.items!.isNotEmpty) ...[
+                                const SizedBox(height: 12),
+                                const Text(
+                                  'Items:',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w600,
                                     fontSize: 14,
-                                    color: Color(0xFFFF5B9E),
                                   ),
                                 ),
-                              ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  widget.items!.join(', '),
+                                  style: TextStyle(
+                                    color: Colors.grey[600],
+                                    fontSize: 14,
+                                  ),
+                                ),
+                              ],
                             ],
                           ),
                         ),
@@ -382,8 +338,12 @@ class _OrderSuccessPageState extends State<OrderSuccessPage>
                               width: double.infinity,
                               child: ElevatedButton(
                                 onPressed: () {
-                                  // Navigate to order tracking/history
-                                  Navigator.of(context).pushNamed('/order-history');
+                                  // You can navigate to order tracking page here
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text('Order tracking feature coming soon!'),
+                                    ),
+                                  );
                                 },
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: const Color(0xFFFF5B9E),
@@ -445,26 +405,29 @@ class _OrderSuccessPageState extends State<OrderSuccessPage>
     );
   }
 
-  Widget _buildOrderDetailRow(String label, String value, {bool isHighlighted = false}) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 14,
-            color: Colors.grey[600],
+  Widget _buildOrderDetailRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 14,
+              color: Colors.grey[600],
+            ),
           ),
-        ),
-        Text(
-          value,
-          style: TextStyle(
-            fontSize: 14,
-            fontWeight: isHighlighted ? FontWeight.bold : FontWeight.w500,
-            color: isHighlighted ? const Color(0xFFFF5B9E) : Colors.black,
+          Text(
+            value,
+            style: const TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: Colors.black87,
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }

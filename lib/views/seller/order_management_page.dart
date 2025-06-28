@@ -1,6 +1,7 @@
-// lib/views/seller/order_management_page.dart
+// lib/views/seller/order_management_page.dart (Clean Fixed Version)
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../../services/order_service.dart';
 
 class OrderManagementPage extends StatefulWidget {
   const OrderManagementPage({Key? key}) : super(key: key);
@@ -11,15 +12,18 @@ class OrderManagementPage extends StatefulWidget {
 
 class _OrderManagementPageState extends State<OrderManagementPage>
     with SingleTickerProviderStateMixin {
+  late TabController _tabController;
+  final OrderService _orderService = OrderService();
   String _getCleanAddress(dynamic address) {
     if (address == null) return 'N/A';
 
     if (address is Map<String, dynamic>) {
       List<String> parts = [];
-      if (address['street'] != null) parts.add(address['street']);
+      if (address['recipientName'] != null) parts.add(address['recipientName']);
+      if (address['addressLine'] != null) parts.add(address['addressLine']);
       if (address['city'] != null) parts.add(address['city']);
       if (address['state'] != null) parts.add(address['state']);
-      if (address['zipCode'] != null) parts.add(address['zipCode']);
+      if (address['postcode'] != null) parts.add(address['postcode']);
       return parts.join(', ');
     }
 
@@ -32,9 +36,6 @@ class _OrderManagementPageState extends State<OrderManagementPage>
 
     return 'N/A';
   }
-
-  late TabController _tabController;
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   @override
   void initState() {
@@ -57,7 +58,7 @@ class _OrderManagementPageState extends State<OrderManagementPage>
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.black),
-          onPressed: () => Navigator.pop(context),
+          onPressed: () => Navigator.pop(context, true),
         ),
         title: const Text(
           'Order Management',
@@ -90,25 +91,200 @@ class _OrderManagementPageState extends State<OrderManagementPage>
           ],
         ),
       ),
-      body: TabBarView(
-        controller: _tabController,
+      body: Column(
         children: [
-          _buildOrderList('pending'),
-          _buildOrderList('processing'),
-          _buildOrderList('ready'),
-          _buildOrderList('delivered'),
+          _buildStatisticsCard(),
+          Expanded(
+            child: TabBarView(
+              controller: _tabController,
+              children: [
+                _buildOrderList('pending'),
+                _buildOrderList('processing'),
+                _buildOrderList('ready'),
+                _buildOrderList('delivered'),
+              ],
+            ),
+          ),
         ],
       ),
     );
   }
 
+  Widget _buildStatisticsCard() {
+    return Container(
+      margin: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: FutureBuilder<Map<String, dynamic>>(
+        future: _orderService.getSellerOrderStatistics(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+                SizedBox(width: 8),
+                Text('Loading statistics...'),
+              ],
+            );
+          }
+
+          final stats = snapshot.data ?? <String, dynamic>{};
+
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    'Order Overview',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFF5B9E).withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      'Today: RM${(stats['todaySales'] ?? 0.0).toStringAsFixed(2)}',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFFFF5B9E),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: _buildStatItem(
+                      'Total',
+                      '${stats['total'] ?? 0}',
+                      Icons.shopping_bag_outlined,
+                      const Color(0xFF8B4B5C),
+                    ),
+                  ),
+                  Expanded(
+                    child: _buildStatItem(
+                      'Pending',
+                      '${stats['pending'] ?? 0}',
+                      Icons.access_time,
+                      Colors.orange,
+                    ),
+                  ),
+                  Expanded(
+                    child: _buildStatItem(
+                      'Processing',
+                      '${stats['processing'] ?? 0}',
+                      Icons.hourglass_empty,
+                      Colors.blue,
+                    ),
+                  ),
+                  Expanded(
+                    child: _buildStatItem(
+                      'Completed',
+                      '${stats['delivered'] ?? 0}',
+                      Icons.check_circle_outline,
+                      Colors.green,
+                    ),
+                  ),
+                ],
+              ),
+              if ((stats['totalSales'] ?? 0.0) > 0) ...[
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFF5B9E).withOpacity(0.05),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(
+                        Icons.monetization_on,
+                        color: Color(0xFFFF5B9E),
+                        size: 20,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Total Sales: RM${(stats['totalSales'] ?? 0.0).toStringAsFixed(2)}',
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFFFF5B9E),
+                          ),
+                        ),
+                      ),
+                      Text(
+                        'Monthly: RM${(stats['monthSales'] ?? 0.0).toStringAsFixed(2)}',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey[600],
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildStatItem(String label, String value, IconData icon, Color color) {
+    return Column(
+      children: [
+        Icon(icon, color: color, size: 20),
+        const SizedBox(height: 4),
+        Text(
+          value,
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+            color: color,
+          ),
+        ),
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 10,
+            color: Colors.grey,
+          ),
+          textAlign: TextAlign.center,
+        ),
+      ],
+    );
+  }
+
   Widget _buildOrderList(String status) {
     return StreamBuilder<QuerySnapshot>(
-      stream:
-          _firestore
-              .collection('orders')
-              .where('status', isEqualTo: status)
-              .snapshots(),
+      stream: _orderService.getSellerOrdersStream(status),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(
@@ -119,14 +295,30 @@ class _OrderManagementPageState extends State<OrderManagementPage>
         }
 
         if (snapshot.hasError) {
-          return Center(child: Text('Error: ${snapshot.error}'));
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.error_outline, size: 64, color: Colors.red),
+                const SizedBox(height: 16),
+                Text('Error: ${snapshot.error}'),
+                const SizedBox(height: 16),
+                ElevatedButton(
+                  onPressed: () => setState(() {}),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFFF5B9E),
+                  ),
+                  child: const Text('Retry'),
+                ),
+              ],
+            ),
+          );
         }
 
         if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
           return _buildEmptyState(status);
         }
 
-        // Sort the documents by createdAt manually
         List<QueryDocumentSnapshot> sortedDocs = List.from(snapshot.data!.docs);
         sortedDocs.sort((a, b) {
           final aData = a.data() as Map<String, dynamic>;
@@ -139,7 +331,7 @@ class _OrderManagementPageState extends State<OrderManagementPage>
           if (bTime == null) return -1;
 
           if (aTime is Timestamp && bTime is Timestamp) {
-            return bTime.compareTo(aTime); // Descending order (newest first)
+            return bTime.compareTo(aTime);
           }
 
           return 0;
@@ -161,27 +353,33 @@ class _OrderManagementPageState extends State<OrderManagementPage>
   Widget _buildEmptyState(String status) {
     String message;
     IconData icon;
+    String subtitle;
 
     switch (status) {
       case 'pending':
         message = 'No new orders';
         icon = Icons.inbox_outlined;
+        subtitle = 'New orders will appear here when customers place them';
         break;
       case 'processing':
         message = 'No orders being processed';
         icon = Icons.hourglass_empty;
+        subtitle = 'Orders you\'ve accepted will appear here';
         break;
       case 'ready':
         message = 'No orders ready';
         icon = Icons.check_circle_outline;
+        subtitle = 'Orders marked as ready will appear here';
         break;
       case 'delivered':
         message = 'No delivered orders';
         icon = Icons.local_shipping_outlined;
+        subtitle = 'Completed orders will appear here';
         break;
       default:
         message = 'No orders found';
         icon = Icons.shopping_bag_outlined;
+        subtitle = 'Orders will appear here';
     }
 
     return Center(
@@ -193,21 +391,26 @@ class _OrderManagementPageState extends State<OrderManagementPage>
           Text(
             message,
             style: TextStyle(
-              fontSize: 16,
+              fontSize: 18,
               color: Colors.grey[600],
               fontWeight: FontWeight.w500,
             ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            subtitle,
+            style: TextStyle(
+              fontSize: 14,
+              color: Colors.grey[500],
+            ),
+            textAlign: TextAlign.center,
           ),
         ],
       ),
     );
   }
 
-  Widget _buildOrderCard(
-    String orderId,
-    Map<String, dynamic> orderData,
-    String status,
-  ) {
+  Widget _buildOrderCard(String orderId, Map<String, dynamic> orderData, String status) {
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       elevation: 2,
@@ -280,42 +483,6 @@ class _OrderManagementPageState extends State<OrderManagementPage>
     );
   }
 
-  Widget _buildStatusIcon(String status) {
-    IconData icon;
-    Color color;
-
-    switch (status) {
-      case 'pending':
-        icon = Icons.new_releases_outlined;
-        color = Colors.orange;
-        break;
-      case 'processing':
-        icon = Icons.hourglass_empty;
-        color = Colors.blue;
-        break;
-      case 'ready':
-        icon = Icons.check_circle_outline;
-        color = Colors.green;
-        break;
-      case 'delivered':
-        icon = Icons.local_shipping_outlined;
-        color = Colors.purple;
-        break;
-      default:
-        icon = Icons.shopping_bag_outlined;
-        color = Colors.grey;
-    }
-
-    return Container(
-      padding: const EdgeInsets.all(8),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Icon(icon, color: color, size: 20),
-    );
-  }
-
   Widget _buildStatusBadge(String status) {
     Color color;
     String text;
@@ -369,14 +536,11 @@ class _OrderManagementPageState extends State<OrderManagementPage>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Customer Information
           _buildDetailSection('Customer Information', [
             _buildCustomerInfo(orderData['userId']),
             _buildDetailRow('Payment Status', _getPaymentMethod(orderData)),
           ]),
           const SizedBox(height: 16),
-
-          // Delivery Information
           _buildDetailSection('Delivery Information', [
             _buildDetailRow(
               'Method',
@@ -397,8 +561,6 @@ class _OrderManagementPageState extends State<OrderManagementPage>
             ),
           ]),
           const SizedBox(height: 16),
-
-          // Order Summary
           _buildDetailSection('Order Summary', [
             _buildDetailRow(
               'Subtotal',
@@ -419,8 +581,6 @@ class _OrderManagementPageState extends State<OrderManagementPage>
             ),
           ]),
           const SizedBox(height: 16),
-
-          // Items List
           _buildItemsList(orderData['items']),
         ],
       ),
@@ -507,7 +667,6 @@ class _OrderManagementPageState extends State<OrderManagementPage>
       ),
       child: Row(
         children: [
-          // Item icon based on category
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
@@ -521,7 +680,6 @@ class _OrderManagementPageState extends State<OrderManagementPage>
             ),
           ),
           const SizedBox(width: 12),
-          // Item details
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -541,7 +699,6 @@ class _OrderManagementPageState extends State<OrderManagementPage>
               ],
             ),
           ),
-          // Price
           Text(
             'RM${(item['totalPrice'] ?? 0.0).toStringAsFixed(2)}',
             style: const TextStyle(
@@ -716,16 +873,20 @@ class _OrderManagementPageState extends State<OrderManagementPage>
 
   Future<void> _updateOrderStatus(String orderId, String newStatus) async {
     try {
-      await _firestore.collection('orders').doc(orderId).update({
-        'status': newStatus,
-        'updatedAt': FieldValue.serverTimestamp(),
-      });
+      final success = await _orderService.updateOrderStatus(orderId, newStatus);
 
-      if (mounted) {
+      if (success && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Order updated to "$newStatus"'),
             backgroundColor: Colors.green,
+          ),
+        );
+      } else if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Failed to update order'),
+            backgroundColor: Colors.red,
           ),
         );
       }
@@ -743,13 +904,20 @@ class _OrderManagementPageState extends State<OrderManagementPage>
 
   Future<void> _rejectOrder(String orderId) async {
     try {
-      await _firestore.collection('orders').doc(orderId).delete();
+      final success = await _orderService.rejectOrder(orderId);
 
-      if (mounted) {
+      if (success && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Order rejected and removed'),
+            content: Text('Order rejected'),
             backgroundColor: Colors.orange,
+          ),
+        );
+      } else if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Failed to reject order'),
+            backgroundColor: Colors.red,
           ),
         );
       }
@@ -768,50 +936,48 @@ class _OrderManagementPageState extends State<OrderManagementPage>
   void _showRejectDialog(String orderId) {
     showDialog(
       context: context,
-      builder:
-          (context) => AlertDialog(
-            title: const Text('Reject Order'),
-            content: const Text('Are you sure you want to reject this order?'),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('Cancel'),
-              ),
-              TextButton(
-                onPressed: () {
-                  Navigator.pop(context);
-                  _rejectOrder(orderId);
-                },
-                style: TextButton.styleFrom(foregroundColor: Colors.red),
-                child: const Text('Reject'),
-              ),
-            ],
+      builder: (context) => AlertDialog(
+        title: const Text('Reject Order'),
+        content: const Text('Are you sure you want to reject this order? This action cannot be undone.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
           ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _rejectOrder(orderId);
+            },
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Reject'),
+          ),
+        ],
+      ),
     );
   }
 
   void _showCancelDialog(String orderId) {
     showDialog(
       context: context,
-      builder:
-          (context) => AlertDialog(
-            title: const Text('Cancel Order'),
-            content: const Text('Are you sure you want to cancel this order?'),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('No'),
-              ),
-              TextButton(
-                onPressed: () async {
-                  Navigator.pop(context);
-                  await _updateOrderStatus(orderId, 'cancelled');
-                },
-                style: TextButton.styleFrom(foregroundColor: Colors.red),
-                child: const Text('Cancel Order'),
-              ),
-            ],
+      builder: (context) => AlertDialog(
+        title: const Text('Cancel Order'),
+        content: const Text('Are you sure you want to cancel this order?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('No'),
           ),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              await _updateOrderStatus(orderId, 'cancelled');
+            },
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Cancel Order'),
+          ),
+        ],
+      ),
     );
   }
 
@@ -828,7 +994,6 @@ class _OrderManagementPageState extends State<OrderManagementPage>
         return 'Invalid date';
       }
 
-      // Format without using intl package to avoid import issues
       return '${_getMonthName(dateTime.month)} ${dateTime.day}, ${dateTime.year} ${_formatTime(dateTime)}';
     } catch (e) {
       return 'Invalid date';
@@ -837,19 +1002,8 @@ class _OrderManagementPageState extends State<OrderManagementPage>
 
   String _getMonthName(int month) {
     const months = [
-      '',
-      'Jan',
-      'Feb',
-      'Mar',
-      'Apr',
-      'May',
-      'Jun',
-      'Jul',
-      'Aug',
-      'Sep',
-      'Oct',
-      'Nov',
-      'Dec',
+      '', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
     ];
     return months[month];
   }
@@ -877,7 +1031,7 @@ class _OrderManagementPageState extends State<OrderManagementPage>
     }
 
     return FutureBuilder<DocumentSnapshot>(
-      future: _firestore.collection('users').doc(userId).get(),
+      future: FirebaseFirestore.instance.collection('users').doc(userId).get(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return Column(
@@ -898,8 +1052,8 @@ class _OrderManagementPageState extends State<OrderManagementPage>
         }
 
         final userData = snapshot.data!.data() as Map<String, dynamic>;
-        final name = userData['fullName'] ?? 'N/A';
-        final contact = userData['phone'] ?? 'N/A';
+        final name = userData['fullName'] ?? userData['name'] ?? userData['displayName'] ?? 'N/A';
+        final contact = userData['phone'] ?? userData['phoneNumber'] ?? userData['contactNumber'] ?? 'N/A';
 
         return Column(
           children: [
@@ -910,85 +1064,17 @@ class _OrderManagementPageState extends State<OrderManagementPage>
       },
     );
   }
-
-  Widget _buildAddressRow(String label, dynamic address) {
-    String addressText = 'N/A';
-
-    if (address != null) {
-      if (address is Map<String, dynamic>) {
-        // Extract address components (excluding phone number)
-        List<String> addressParts = [];
-        if (address['street'] != null) addressParts.add(address['street']);
-        if (address['city'] != null) addressParts.add(address['city']);
-        if (address['state'] != null) addressParts.add(address['state']);
-        if (address['zipCode'] != null) addressParts.add(address['zipCode']);
-
-        addressText = addressParts.isNotEmpty ? addressParts.join(', ') : 'N/A';
-      } else {
-        // If it's a string, clean it up to remove phone numbers
-        String rawAddress = address.toString();
-        // Remove phone number patterns like "Tel: 012-8078917" or phoneNumber fields
-        rawAddress = rawAddress.replaceAll(RegExp(r',?\s*Tel:\s*[0-9-]+'), '');
-        rawAddress = rawAddress.replaceAll(
-          RegExp(r',?\s*phoneNumber:\s*[0-9-]+'),
-          '',
-        );
-        addressText = rawAddress.trim();
-      }
-    }
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 2),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              SizedBox(
-                width: 100,
-                child: Text(
-                  label,
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: Colors.grey[600],
-                    fontWeight: FontWeight.normal,
-                  ),
-                ),
-              ),
-              Expanded(
-                child: Text(
-                  addressText,
-                  style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w500,
-                    color: Colors.black87,
-                  ),
-                  maxLines: 3,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
   String _getPaymentMethod(Map<String, dynamic> orderData) {
     final shippingMethod = orderData['shippingMethod'] as String?;
 
-    // For delivery orders, payment is usually COD
     if (shippingMethod == 'delivery') {
       return 'Cash on Delivery';
     }
 
-    // For self pickup, could be cash on pickup
     if (shippingMethod == 'selfPickup') {
       return 'Cash on Pickup';
     }
 
-    // Fallback
     return orderData['paymentStatus'] ?? 'pending';
   }
 
@@ -1016,9 +1102,16 @@ class _OrderManagementPageState extends State<OrderManagementPage>
       case 'spices':
         return Icons.spa;
       case 'sauces':
+      case 'condiments':
         return Icons.liquor;
       case 'basic':
         return Icons.kitchen;
+      case 'fruits':
+        return Icons.apple;
+      case 'beverages':
+        return Icons.local_cafe;
+      case 'snacks':
+        return Icons.cookie;
       default:
         return Icons.shopping_cart;
     }
@@ -1037,11 +1130,19 @@ class _OrderManagementPageState extends State<OrderManagementPage>
       case 'spices':
         return Colors.orange;
       case 'sauces':
+      case 'condiments':
         return Colors.brown;
       case 'basic':
         return Colors.grey;
+      case 'fruits':
+        return Colors.pink;
+      case 'beverages':
+        return Colors.cyan;
+      case 'snacks':
+        return Colors.purple;
       default:
         return Colors.grey;
     }
   }
 }
+
