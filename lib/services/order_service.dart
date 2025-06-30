@@ -16,6 +16,8 @@ class OrderService {
   final InventoryService _inventoryService = InventoryService();
 
   // Get current user ID
+  String? _lastCreatedOrderId;
+  String? get lastCreatedOrderId => _lastCreatedOrderId;
   String? get currentUserId => _auth.currentUser?.uid;
 
   // ============ BUYER FUNCTIONALITY ============
@@ -58,7 +60,9 @@ class OrderService {
       }
 
       // Generate order ID
-      final orderId = 'order_${DateTime.now().millisecondsSinceEpoch}';
+      final orderRef = _firestore.collection('orders').doc();
+      final orderId = orderRef.id;   
+      _lastCreatedOrderId = orderId;   
       print('📝 Generated order ID: $orderId');
 
       // Calculate totals
@@ -148,7 +152,6 @@ class OrderService {
       final batch = _firestore.batch();
 
       // Main order document (for seller to see)
-      final orderRef = _firestore.collection('orders').doc(orderId);
       batch.set(orderRef, orderData);
 
       // User's order reference (for buyer order history)

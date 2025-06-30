@@ -725,7 +725,7 @@ class _CheckoutViewState extends State<CheckoutView> {
           checkoutViewModel.getShippingFee();
       final isDelivery = checkoutViewModel.selectedShippingMethod == ShippingMethod.delivery;
       final estimatedTime = checkoutViewModel.getEstimatedTime();
-      final orderId = 'YC${DateTime.now().millisecondsSinceEpoch.toString().substring(8)}';
+      final orderId = checkoutViewModel.lastOrderId;
 
       // Navigate to success page instead of showing snackbar
       Navigator.of(context).pushReplacement(

@@ -186,8 +186,7 @@ class CheckoutViewModel extends ChangeNotifier {
         print('✅ Order processed successfully');
 
         // Generate order ID for UI (simplified version)
-        _lastOrderId = 'YC${DateTime.now().millisecondsSinceEpoch.toString().substring(8)}';
-
+        _lastOrderId = _orderService.lastCreatedOrderId ?? DateTime.now().millisecondsSinceEpoch.toString();
         // Send confirmation notifications (if implemented)
         _sendOrderConfirmation(cart);
 
