@@ -296,11 +296,11 @@ class OrderService {
 
       print('📋 Fetching order history for user: $currentUserId');
 
+      // Fetch from main orders collection instead of user subcollection
       final snapshot =
           await _firestore
-              .collection('users')
-              .doc(currentUserId!)
-              .collection('orders')
+              .collection('orders') // Main collection
+              .where('userId', isEqualTo: currentUserId) // Filter by user
               .orderBy('createdAt', descending: true)
               .limit(20)
               .get();
@@ -857,11 +857,7 @@ class OrderService {
 
   // Get order tracking information with real-time updates
   Stream<Map<String, dynamic>?> getOrderTrackingStream(String orderId) {
-    return _firestore
-        .collection('orders')
-        .doc(orderId)
-        .snapshots()
-        .map((doc) {
+    return _firestore.collection('orders').doc(orderId).snapshots().map((doc) {
       if (doc.exists) {
         return doc.data() as Map<String, dynamic>;
       }
@@ -883,10 +879,11 @@ class OrderService {
         };
       }
 
-      final snapshot = await _firestore
-          .collection('orders')
-          .where('userId', isEqualTo: currentUserId)
-          .get();
+      final snapshot =
+          await _firestore
+              .collection('orders')
+              .where('userId', isEqualTo: currentUserId)
+              .get();
 
       Map<String, int> summary = {
         'pending': 0,
@@ -905,7 +902,6 @@ class OrderService {
       }
 
       return summary;
-
     } catch (e) {
       print('❌ Error getting order summary: $e');
       return {
@@ -920,7 +916,11 @@ class OrderService {
   }
 
   // Mark order as reviewed
-  Future<bool> markOrderAsReviewed(String orderId, double rating, String review) async {
+  Future<bool> markOrderAsReviewed(
+    String orderId,
+    double rating,
+    String review,
+  ) async {
     try {
       print('⭐ Adding review for order: $orderId');
 
@@ -933,7 +933,6 @@ class OrderService {
 
       print('✅ Review added successfully');
       return true;
-
     } catch (e) {
       print('❌ Error adding review: $e');
       return false;
@@ -951,7 +950,7 @@ class OrderService {
   Future<bool> addTrackingNumber(String orderId) async {
     try {
       final trackingNumber = generateTrackingNumber();
-      
+
       await _firestore.collection('orders').doc(orderId).update({
         'trackingNumber': trackingNumber,
         'trackingAddedAt': FieldValue.serverTimestamp(),
@@ -959,7 +958,6 @@ class OrderService {
 
       print('📦 Tracking number added: $trackingNumber');
       return true;
-
     } catch (e) {
       print('❌ Error adding tracking number: $e');
       return false;
@@ -969,7 +967,7 @@ class OrderService {
   // Get estimated delivery time based on shipping method
   DateTime getEstimatedDeliveryTime(String shippingMethod) {
     final now = DateTime.now();
-    
+
     switch (shippingMethod) {
       case 'delivery':
         return now.add(const Duration(hours: 2, minutes: 30));
@@ -995,12 +993,13 @@ class OrderService {
     try {
       if (currentUserId == null) return [];
 
-      final snapshot = await _firestore
-          .collection('orders')
-          .where('userId', isEqualTo: currentUserId)
-          .orderBy('createdAt', descending: true)
-          .limit(5)
-          .get();
+      final snapshot =
+          await _firestore
+              .collection('orders')
+              .where('userId', isEqualTo: currentUserId)
+              .orderBy('createdAt', descending: true)
+              .limit(5)
+              .get();
 
       return snapshot.docs.map((doc) {
         final data = doc.data();
@@ -1012,7 +1011,6 @@ class OrderService {
           'itemCount': data['itemCount'] ?? 0,
         };
       }).toList();
-
     } catch (e) {
       print('❌ Error getting recent orders: $e');
       return [];
