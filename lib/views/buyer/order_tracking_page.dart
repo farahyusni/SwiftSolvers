@@ -70,47 +70,6 @@ class _OrderTrackingPageState extends State<OrderTrackingPage>
             fontWeight: FontWeight.w600,
           ),
         ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.search, color: Colors.white),
-            onPressed: () {
-              // Implement search functionality
-            },
-          ),
-          Stack(
-            children: [
-              IconButton(
-                icon: const Icon(
-                  Icons.chat_bubble_outline,
-                  color: Colors.white,
-                ),
-                onPressed: () {
-                  // Navigate to chat/messages
-                },
-              ),
-              Positioned(
-                right: 6,
-                top: 6,
-                child: Container(
-                  padding: const EdgeInsets.all(2),
-                  decoration: BoxDecoration(
-                    color: Colors.red,
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  constraints: const BoxConstraints(
-                    minWidth: 16,
-                    minHeight: 16,
-                  ),
-                  child: const Text(
-                    '25',
-                    style: TextStyle(color: Colors.white, fontSize: 10),
-                    textAlign: TextAlign.center,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ],
       ),
       body: Column(
         children: [
@@ -283,7 +242,7 @@ class _OrderTrackingPageState extends State<OrderTrackingPage>
                       ),
                       const SizedBox(width: 8),
                       Text(
-                        'YumCart Store',
+                        'Jaya Grocer',
                         style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w600,

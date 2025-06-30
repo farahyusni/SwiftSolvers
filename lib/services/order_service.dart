@@ -635,15 +635,25 @@ class OrderService {
       final today = DateTime(now.year, now.month, now.day);
       final startOfMonth = DateTime(now.year, now.month, 1);
 
+      // ADD DEBUG: Print all orders and their statuses
+      print('📊 DEBUG: Processing ${snapshot.docs.length} orders for seller statistics');
+
       for (var doc in snapshot.docs) {
         final data = doc.data();
         final status = data['status'] ?? 'pending';
         final totalAmount = (data['totalAmount'] ?? 0.0).toDouble();
         final createdAt = (data['createdAt'] as Timestamp?)?.toDate();
 
+        // ADD DEBUG: Print each order
+        print('📊 Order ${doc.id}: status = "$status"');
+
         // Count by status
         if (stats.containsKey(status)) {
           stats[status] = (stats[status] ?? 0) + 1;
+          print('📊 Updated $status count to: ${stats[status]}');
+        } else {
+          print('📊 WARNING: Unknown status "$status" - adding to stats');
+          stats[status] = 1; // Add unknown statuses
         }
 
         // Calculate sales for paid/delivered orders
@@ -665,6 +675,9 @@ class OrderService {
           }
         }
       }
+
+      // ADD DEBUG: Print final stats
+      print('📊 Final stats: $stats');
 
       return stats;
     } catch (e) {

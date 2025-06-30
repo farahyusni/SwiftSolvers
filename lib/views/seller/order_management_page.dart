@@ -40,7 +40,7 @@ class _OrderManagementPageState extends State<OrderManagementPage>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 4, vsync: this);
+    _tabController = TabController(length: 5, vsync: this);
   }
 
   @override
@@ -88,6 +88,7 @@ class _OrderManagementPageState extends State<OrderManagementPage>
             Tab(text: 'Processing'),
             Tab(text: 'Ready'),
             Tab(text: 'Delivered'),
+            Tab(text: 'Cancelled'),
           ],
         ),
       ),
@@ -102,6 +103,7 @@ class _OrderManagementPageState extends State<OrderManagementPage>
                 _buildOrderList('processing'),
                 _buildOrderList('ready'),
                 _buildOrderList('delivered'),
+                _buildOrderList('cancelled'),
               ],
             ),
           ),
@@ -208,6 +210,14 @@ class _OrderManagementPageState extends State<OrderManagementPage>
                       '${stats['delivered'] ?? 0}',
                       Icons.check_circle_outline,
                       Colors.green,
+                    ),
+                  ),
+                  Expanded(
+                    child: _buildStatItem(
+                      'Cancelled',
+                      '${stats['cancelled'] ?? 0}',
+                      Icons.cancel_outlined,
+                      Colors.red,
                     ),
                   ),
                 ],
@@ -376,6 +386,11 @@ class _OrderManagementPageState extends State<OrderManagementPage>
         icon = Icons.local_shipping_outlined;
         subtitle = 'Completed orders will appear here';
         break;
+      case 'cancelled':
+        message = 'No cancelled orders';
+        icon = Icons.cancel_outlined;
+        subtitle = 'Orders that were cancelled will appear here';
+        break;
       default:
         message = 'No orders found';
         icon = Icons.shopping_bag_outlined;
@@ -450,6 +465,7 @@ class _OrderManagementPageState extends State<OrderManagementPage>
           if (status == 'pending') _buildActionButtons(orderId),
           if (status == 'processing') _buildProcessingButtons(orderId),
           if (status == 'ready') _buildReadyButtons(orderId),
+          // Cancelled orders won't have any buttons - which is correct
         ],
       ),
     );
@@ -503,6 +519,10 @@ class _OrderManagementPageState extends State<OrderManagementPage>
       case 'delivered':
         color = Colors.purple;
         text = 'DELIVERED';
+        break;
+      case 'cancelled':
+        color = Colors.red;
+        text = 'CANCELLED';
         break;
       default:
         color = Colors.grey;
