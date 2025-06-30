@@ -109,7 +109,7 @@ class _OrderTrackingPageState extends State<OrderTrackingPage>
                       children: [
                         _buildOrderList('pending'), // To Pay
                         _buildOrderList('confirmed'), // To Ship
-                        _buildOrderList('outForDelivery'), // To Receive
+                        _buildOrderList('ready'), // To Receive
                         _buildOrderList('delivered'), // Completed
                         _buildOrderList('cancelled'), // Return/Refund
                       ],
