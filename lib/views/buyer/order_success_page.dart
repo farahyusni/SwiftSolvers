@@ -42,21 +42,13 @@ class _OrderSuccessPageState extends State<OrderSuccessPage>
       vsync: this,
     );
 
-    _scaleAnimation = Tween<double>(
-      begin: 0.0,
-      end: 1.0,
-    ).animate(CurvedAnimation(
-      parent: _animationController,
-      curve: Curves.elasticOut,
-    ));
+    _scaleAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _animationController, curve: Curves.elasticOut),
+    );
 
-    _fadeAnimation = Tween<double>(
-      begin: 0.0,
-      end: 1.0,
-    ).animate(CurvedAnimation(
-      parent: _animationController,
-      curve: Curves.easeInOut,
-    ));
+    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _animationController, curve: Curves.easeInOut),
+    );
 
     _animationController.forward();
 
@@ -151,17 +143,17 @@ class _OrderSuccessPageState extends State<OrderSuccessPage>
                     onPressed: () {
                       Navigator.of(context).pushNamedAndRemoveUntil(
                         '/buyer-home',
-                            (route) => false,
+                        (route) => false,
                       );
                     },
-                    icon: const Icon(
-                      Icons.arrow_back,
-                      color: Colors.white,
-                    ),
+                    icon: const Icon(Icons.arrow_back, color: Colors.white),
                   ),
                   const Spacer(),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
                     decoration: BoxDecoration(
                       color: Colors.white.withOpacity(0.2),
                       borderRadius: BorderRadius.circular(20),
@@ -217,10 +209,7 @@ class _OrderSuccessPageState extends State<OrderSuccessPage>
                             gradient: const LinearGradient(
                               begin: Alignment.topLeft,
                               end: Alignment.bottomRight,
-                              colors: [
-                                Color(0xFFFF5B9E),
-                                Color(0xFFFF8FA3),
-                              ],
+                              colors: [Color(0xFFFF5B9E), Color(0xFFFF8FA3)],
                             ),
                             shape: BoxShape.circle,
                             boxShadow: [
@@ -296,15 +285,27 @@ class _OrderSuccessPageState extends State<OrderSuccessPage>
                                 ),
                               ),
                               const SizedBox(height: 16),
-                              _buildOrderDetailRow('Order ID', '#${widget.orderId}'),
-                              if (widget.storeName != null)
-                                _buildOrderDetailRow('Store', widget.storeName!),
-                              _buildOrderDetailRow('Total Amount', 'RM ${widget.totalAmount.toStringAsFixed(2)}'),
                               _buildOrderDetailRow(
-                                widget.isDelivery ? 'Estimated Delivery' : 'Ready for Pickup',
+                                'Order ID',
+                                '#${widget.orderId}',
+                              ),
+                              if (widget.storeName != null)
+                                _buildOrderDetailRow(
+                                  'Store',
+                                  widget.storeName!,
+                                ),
+                              _buildOrderDetailRow(
+                                'Total Amount',
+                                'RM ${widget.totalAmount.toStringAsFixed(2)}',
+                              ),
+                              _buildOrderDetailRow(
+                                widget.isDelivery
+                                    ? 'Estimated Delivery'
+                                    : 'Ready for Pickup',
                                 widget.estimatedDelivery,
                               ),
-                              if (widget.items != null && widget.items!.isNotEmpty) ...[
+                              if (widget.items != null &&
+                                  widget.items!.isNotEmpty) ...[
                                 const SizedBox(height: 12),
                                 const Text(
                                   'Items:',
@@ -338,17 +339,19 @@ class _OrderSuccessPageState extends State<OrderSuccessPage>
                               width: double.infinity,
                               child: ElevatedButton(
                                 onPressed: () {
-                                  // You can navigate to order tracking page here
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      content: Text('Order tracking feature coming soon!'),
-                                    ),
+                                  // Navigate directly to order detail page for this specific order
+                                  Navigator.pushNamed(
+                                    context,
+                                    '/order-detail',
+                                    arguments: {'orderId': widget.orderId},
                                   );
                                 },
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: const Color(0xFFFF5B9E),
                                   foregroundColor: Colors.white,
-                                  padding: const EdgeInsets.symmetric(vertical: 16),
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 16,
+                                  ),
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(12),
                                   ),
@@ -369,7 +372,7 @@ class _OrderSuccessPageState extends State<OrderSuccessPage>
                                 onPressed: () {
                                   Navigator.of(context).pushNamedAndRemoveUntil(
                                     '/buyer-home',
-                                        (route) => false,
+                                    (route) => false,
                                   );
                                 },
                                 style: OutlinedButton.styleFrom(
@@ -377,7 +380,9 @@ class _OrderSuccessPageState extends State<OrderSuccessPage>
                                   side: const BorderSide(
                                     color: Color(0xFFFF5B9E),
                                   ),
-                                  padding: const EdgeInsets.symmetric(vertical: 16),
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 16,
+                                  ),
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(12),
                                   ),
@@ -411,13 +416,7 @@ class _OrderSuccessPageState extends State<OrderSuccessPage>
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 14,
-              color: Colors.grey[600],
-            ),
-          ),
+          Text(label, style: TextStyle(fontSize: 14, color: Colors.grey[600])),
           Text(
             value,
             style: const TextStyle(

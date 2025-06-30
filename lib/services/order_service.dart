@@ -854,4 +854,168 @@ class OrderService {
       // Don't throw error here as the order was already created successfully
     }
   }
+
+  // Get order tracking information with real-time updates
+  Stream<Map<String, dynamic>?> getOrderTrackingStream(String orderId) {
+    return _firestore
+        .collection('orders')
+        .doc(orderId)
+        .snapshots()
+        .map((doc) {
+      if (doc.exists) {
+        return doc.data() as Map<String, dynamic>;
+      }
+      return null;
+    });
+  }
+
+  // Get order summary for quick display
+  Future<Map<String, int>> getOrderStatusSummary() async {
+    try {
+      if (currentUserId == null) {
+        return {
+          'pending': 0,
+          'confirmed': 0,
+          'preparing': 0,
+          'outForDelivery': 0,
+          'delivered': 0,
+          'cancelled': 0,
+        };
+      }
+
+      final snapshot = await _firestore
+          .collection('orders')
+          .where('userId', isEqualTo: currentUserId)
+          .get();
+
+      Map<String, int> summary = {
+        'pending': 0,
+        'confirmed': 0,
+        'preparing': 0,
+        'outForDelivery': 0,
+        'delivered': 0,
+        'cancelled': 0,
+      };
+
+      for (var doc in snapshot.docs) {
+        final status = doc.data()['status'] ?? 'pending';
+        if (summary.containsKey(status)) {
+          summary[status] = summary[status]! + 1;
+        }
+      }
+
+      return summary;
+
+    } catch (e) {
+      print('❌ Error getting order summary: $e');
+      return {
+        'pending': 0,
+        'confirmed': 0,
+        'preparing': 0,
+        'outForDelivery': 0,
+        'delivered': 0,
+        'cancelled': 0,
+      };
+    }
+  }
+
+  // Mark order as reviewed
+  Future<bool> markOrderAsReviewed(String orderId, double rating, String review) async {
+    try {
+      print('⭐ Adding review for order: $orderId');
+
+      await _firestore.collection('orders').doc(orderId).update({
+        'rating': rating,
+        'review': review,
+        'reviewedAt': FieldValue.serverTimestamp(),
+        'isReviewed': true,
+      });
+
+      print('✅ Review added successfully');
+      return true;
+
+    } catch (e) {
+      print('❌ Error adding review: $e');
+      return false;
+    }
+  }
+
+  // Generate tracking number for order
+  String generateTrackingNumber() {
+    final timestamp = DateTime.now().millisecondsSinceEpoch;
+    final random = (timestamp % 10000).toString().padLeft(4, '0');
+    return 'YC$random';
+  }
+
+  // Add tracking number to existing order
+  Future<bool> addTrackingNumber(String orderId) async {
+    try {
+      final trackingNumber = generateTrackingNumber();
+      
+      await _firestore.collection('orders').doc(orderId).update({
+        'trackingNumber': trackingNumber,
+        'trackingAddedAt': FieldValue.serverTimestamp(),
+      });
+
+      print('📦 Tracking number added: $trackingNumber');
+      return true;
+
+    } catch (e) {
+      print('❌ Error adding tracking number: $e');
+      return false;
+    }
+  }
+
+  // Get estimated delivery time based on shipping method
+  DateTime getEstimatedDeliveryTime(String shippingMethod) {
+    final now = DateTime.now();
+    
+    switch (shippingMethod) {
+      case 'delivery':
+        return now.add(const Duration(hours: 2, minutes: 30));
+      case 'selfPickup':
+        return now.add(const Duration(minutes: 45));
+      default:
+        return now.add(const Duration(hours: 3));
+    }
+  }
+
+  // Check if order can be cancelled
+  bool canCancelOrder(String status) {
+    return ['pending', 'confirmed'].contains(status);
+  }
+
+  // Check if order can be modified
+  bool canModifyOrder(String status) {
+    return status == 'pending';
+  }
+
+  // Get user's recent orders (last 5)
+  Future<List<Map<String, dynamic>>> getRecentOrders() async {
+    try {
+      if (currentUserId == null) return [];
+
+      final snapshot = await _firestore
+          .collection('orders')
+          .where('userId', isEqualTo: currentUserId)
+          .orderBy('createdAt', descending: true)
+          .limit(5)
+          .get();
+
+      return snapshot.docs.map((doc) {
+        final data = doc.data();
+        return {
+          'id': data['id'] ?? doc.id,
+          'totalAmount': data['totalAmount'] ?? 0.0,
+          'status': data['status'] ?? 'pending',
+          'createdAt': data['createdAt'],
+          'itemCount': data['itemCount'] ?? 0,
+        };
+      }).toList();
+
+    } catch (e) {
+      print('❌ Error getting recent orders: $e');
+      return [];
+    }
+  }
 }

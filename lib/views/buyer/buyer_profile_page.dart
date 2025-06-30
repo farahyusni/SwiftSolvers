@@ -5,6 +5,7 @@ import 'package:firebase_auth/firebase_auth.dart' as auth;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../viewmodels/auth_viewmodel.dart';
 import '../../utils/app_theme.dart';
+import '../../services/order_service.dart';
 
 class BuyerProfilePage extends StatefulWidget {
   const BuyerProfilePage({Key? key}) : super(key: key);
@@ -16,11 +17,14 @@ class BuyerProfilePage extends StatefulWidget {
 class _BuyerProfilePageState extends State<BuyerProfilePage> {
   bool _isLoading = true;
   Map<String, dynamic>? _userData;
+  final OrderService _orderService = OrderService(); 
+  Map<String, int> _orderSummary = {};
 
   @override
   void initState() {
     super.initState();
     _loadUserData();
+    _loadOrderSummary();
   }
 
   Future<void> _loadUserData() async {
@@ -50,6 +54,17 @@ class _BuyerProfilePageState extends State<BuyerProfilePage> {
       setState(() {
         _isLoading = false;
       });
+    }
+  }
+
+  Future<void> _loadOrderSummary() async {
+    try {
+      final summary = await _orderService.getOrderStatusSummary();
+      setState(() {
+        _orderSummary = summary;
+      });
+    } catch (e) {
+      print('Error loading order summary: $e');
     }
   }
 
@@ -141,9 +156,29 @@ class _BuyerProfilePageState extends State<BuyerProfilePage> {
                 ),
               ),
 
-              Divider(height: 40),
+              SizedBox(height: 24), // CHANGED: Reduced space
 
-              // Profile details
+              // ADD THIS: Order Summary Card
+              _buildOrderSummaryCard(),
+
+              SizedBox(height: 24),
+
+              // ADD THIS: Quick Actions Menu
+              _buildQuickActionsMenu(),
+
+              SizedBox(height: 24),
+
+              // Profile details (existing code)
+              Text(
+                'Profile Information',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: AppTheme.primaryColor,
+                ),
+              ),
+              SizedBox(height: 16),
+
               _buildProfileDetail(Icons.phone, 'Phone', _userData!['phone']),
               _buildProfileDetail(Icons.location_on, 'Address', _userData!['address']),
               _buildProfileDetail(Icons.person_outline, 'Account Type', _userData!['userType'] == 'buyer' ? 'Buyer' : 'Seller'),
@@ -180,6 +215,232 @@ class _BuyerProfilePageState extends State<BuyerProfilePage> {
           ),
         ),
       ),
+    );
+  }
+
+  // ADD THIS: Order Summary Card Widget
+  Widget _buildOrderSummaryCard() {
+    final totalOrders = _orderSummary.values.fold(0, (sum, count) => sum + count);
+    final pendingOrders = _orderSummary['pending'] ?? 0;
+    final deliveredOrders = _orderSummary['delivered'] ?? 0;
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [AppTheme.primaryColor, AppTheme.primaryColor.withOpacity(0.8)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: AppTheme.primaryColor.withOpacity(0.3),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'My Orders',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              _buildOrderStat('Total', '$totalOrders', Icons.shopping_cart),
+              _buildOrderStat('Delivered', '$deliveredOrders', Icons.check_circle),
+              _buildOrderStat('Pending', '$pendingOrders', Icons.pending),
+            ],
+          ),
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: () {
+                Navigator.of(context).pushNamed('/order-tracking');
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.white,
+                foregroundColor: AppTheme.primaryColor,
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              child: const Text(
+                'View All Orders',
+                style: TextStyle(
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ADD THIS: Quick Actions Menu Widget
+  Widget _buildQuickActionsMenu() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Quick Actions',
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            color: AppTheme.primaryColor,
+          ),
+        ),
+        SizedBox(height: 16),
+        
+        // My Orders Menu Item
+        _buildMenuTile(
+          icon: Icons.shopping_bag_outlined,
+          title: 'My Orders',
+          subtitle: 'Track your orders and purchase history',
+          onTap: () {
+            Navigator.of(context).pushNamed('/order-tracking');
+          },
+        ),
+        
+        // Favorites Menu Item
+        _buildMenuTile(
+          icon: Icons.favorite_outline,
+          title: 'My Favorites',
+          subtitle: 'View your saved recipes',
+          onTap: () {
+            Navigator.of(context).pushNamed('/favorites');
+          },
+        ),
+        
+        // Shopping Cart Menu Item
+        _buildMenuTile(
+          icon: Icons.shopping_cart_outlined,
+          title: 'Shopping Cart',
+          subtitle: 'View items in your cart',
+          onTap: () {
+            Navigator.of(context).pushNamed('/shopping-cart');
+          },
+        ),
+        
+        // Settings Menu Item
+        _buildMenuTile(
+          icon: Icons.settings_outlined,
+          title: 'Settings',
+          subtitle: 'Manage your account preferences',
+          onTap: () {
+            // Navigate to settings page when available
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Settings page coming soon!')),
+            );
+          },
+        ),
+      ],
+    );
+  }
+
+  // ADD THIS: Menu Tile Helper Widget
+  Widget _buildMenuTile({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required VoidCallback onTap,
+  }) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey[200]!,
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: ListTile(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+        leading: Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: AppTheme.primaryColor.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Icon(
+            icon,
+            color: AppTheme.primaryColor,
+            size: 24,
+          ),
+        ),
+        title: Text(
+          title,
+          style: const TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        subtitle: Text(
+          subtitle,
+          style: TextStyle(
+            fontSize: 14,
+            color: Colors.grey[600],
+          ),
+        ),
+        trailing: const Icon(
+          Icons.chevron_right,
+          color: Colors.grey,
+        ),
+        onTap: onTap,
+      ),
+    );
+  }
+
+  // ADD THIS: Order Stats Helper Widget
+  Widget _buildOrderStat(String label, String value, IconData icon) {
+    return Column(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.2),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Icon(
+            icon,
+            color: Colors.white,
+            size: 20,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          value,
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          label,
+          style: const TextStyle(
+            color: Colors.white70,
+            fontSize: 12,
+          ),
+        ),
+      ],
     );
   }
 

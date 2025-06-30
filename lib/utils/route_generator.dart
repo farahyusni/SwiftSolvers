@@ -15,8 +15,10 @@ import '../views/seller/edit_seller_shop_profile_page.dart';
 import '../views/buyer/recipe_detail_page.dart';
 import '../views/seller/seller_profile_page.dart';
 import '../views/seller/seller_shop_profile_page.dart';
-import '../views/seller/order_management_page.dart'; // Add this import
-import '../widgets/notification_widget_wrapper.dart'; // Add this import
+import '../views/seller/order_management_page.dart'; 
+import '../widgets/notification_widget_wrapper.dart'; 
+import '../views/buyer/order_tracking_page.dart';  
+import '../views/buyer/order_detail_page.dart';
 
 class RouteGenerator {
   static Route<dynamic> generateRoute(RouteSettings settings) {
@@ -69,6 +71,18 @@ class RouteGenerator {
     // ORDER MANAGEMENT ROUTE - NEW
       case '/order-management':
         return MaterialPageRoute(builder: (_) => const OrderManagementPage());
+
+    // NEW ORDER TRACKING ROUTES
+      case '/order-history':
+      case '/order-tracking':
+        return MaterialPageRoute(builder: (_) => const OrderTrackingPage());
+      
+      case '/order-detail':
+        final args = settings.arguments as Map<String, dynamic>;
+        final orderId = args['orderId'] as String;
+        return MaterialPageRoute(
+          builder: (_) => OrderDetailPage(orderId: orderId),
+        );
 
       default:
         return _errorRoute();
