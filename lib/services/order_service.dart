@@ -7,11 +7,13 @@ import '../models/order_model.dart' as models;
 import '../services/order_notification_bridge.dart';
 import '../services/notification_service.dart';
 import '../models/notification_models.dart';
+import '../services/inventory_service.dart';
 
 class OrderService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final OrderNotificationBridge _notificationBridge = OrderNotificationBridge();
+  final InventoryService _inventoryService = InventoryService();
 
   // Get current user ID
   String? get currentUserId => _auth.currentUser?.uid;
@@ -42,13 +44,15 @@ class OrderService {
       }
 
       // Validate delivery address for delivery method
-      if (shippingMethod == models.ShippingMethod.delivery && deliveryAddress == null) {
+      if (shippingMethod == models.ShippingMethod.delivery &&
+          deliveryAddress == null) {
         print('❌ Delivery address required for delivery method');
         throw Exception('Delivery address is required for delivery orders.');
       }
 
       // Validate pickup location for self-pickup method
-      if (shippingMethod == models.ShippingMethod.selfPickup && (pickupLocation == null || pickupLocation.isEmpty)) {
+      if (shippingMethod == models.ShippingMethod.selfPickup &&
+          (pickupLocation == null || pickupLocation.isEmpty)) {
         print('❌ Pickup location required for self-pickup method');
         throw Exception('Pickup location is required for self-pickup orders.');
       }
@@ -68,21 +72,22 @@ class OrderService {
       print('   - Total: RM${totalAmount.toStringAsFixed(2)}');
 
       // Convert cart items to order items with validation
-      final orderItems = cart.items.map((cartItem) {
-        print('📦 Processing item: ${cartItem.name}');
-        return {
-          'id': cartItem.id,
-          'name': cartItem.name,
-          'amount': cartItem.amount,
-          'unit': cartItem.unit,
-          'category': cartItem.category,
-          'recipeId': cartItem.recipeId,
-          'recipeName': cartItem.recipeName,
-          'quantity': cartItem.quantity,
-          'unitPrice': cartItem.currentPrice,
-          'totalPrice': cartItem.totalPrice,
-        };
-      }).toList();
+      final orderItems =
+          cart.items.map((cartItem) {
+            print('📦 Processing item: ${cartItem.name}');
+            return {
+              'id': cartItem.id,
+              'name': cartItem.name,
+              'amount': cartItem.amount,
+              'unit': cartItem.unit,
+              'category': cartItem.category,
+              'recipeId': cartItem.recipeId,
+              'recipeName': cartItem.recipeName,
+              'quantity': cartItem.quantity,
+              'unitPrice': cartItem.currentPrice,
+              'totalPrice': cartItem.totalPrice,
+            };
+          }).toList();
 
       // Create delivery address map safely
       Map<String, dynamic>? deliveryAddressMap;
@@ -107,7 +112,8 @@ class OrderService {
       final orderData = {
         'id': orderId,
         'userId': currentUserId!,
-        'sellerId': sellerId, // *** THIS IS THE KEY CONNECTION FOR SELLER DASHBOARD ***
+        'sellerId':
+            sellerId, // *** THIS IS THE KEY CONNECTION FOR SELLER DASHBOARD ***
         'items': orderItems,
         'subtotal': subtotal,
         'shippingFee': shippingFee,
@@ -168,6 +174,10 @@ class OrderService {
 
       print('✅ Order created successfully: $orderId');
 
+      // 📦 REDUCE STOCK QUANTITIES FOR ORDERED ITEMS
+      print('📦 Reducing stock for ordered items...');
+      await _reduceStockForOrder(cart.items);
+
       // ⚠️ CRITICAL FIX: Only send "Order Placed" notification, NOT status update
       print('🔔 Sending ONLY order placed notification to buyer...');
       _notificationBridge.createOrderPlacedNotification(orderId, orderData);
@@ -178,18 +188,21 @@ class OrderService {
       print('📧 Order confirmation data prepared - NO automatic status change');
 
       return true;
-
     } on FirebaseException catch (e) {
       print('❌ Firebase error creating order: ${e.code} - ${e.message}');
 
       // Handle specific Firebase errors
       switch (e.code) {
         case 'permission-denied':
-          throw Exception('Permission denied. Please check your account permissions.');
+          throw Exception(
+            'Permission denied. Please check your account permissions.',
+          );
         case 'unavailable':
           throw Exception('Service temporarily unavailable. Please try again.');
         case 'deadline-exceeded':
-          throw Exception('Request timeout. Please check your connection and try again.');
+          throw Exception(
+            'Request timeout. Please check your connection and try again.',
+          );
         default:
           throw Exception('Database error: ${e.message}');
       }
@@ -213,15 +226,19 @@ class OrderService {
         final firstItem = cart.items.first;
 
         // Try to find the seller of this item from stocks collection
-        final stockQuery = await _firestore
-            .collection('stocks')
-            .where('name', isEqualTo: firstItem.name)
-            .limit(1)
-            .get();
+        final stockQuery =
+            await _firestore
+                .collection('stocks')
+                .where('name', isEqualTo: firstItem.name)
+                .limit(1)
+                .get();
 
         if (stockQuery.docs.isNotEmpty) {
           final stockData = stockQuery.docs.first.data();
-          final sellerId = stockData['sellerId'] ?? stockData['userId'] ?? stockData['createdBy'];
+          final sellerId =
+              stockData['sellerId'] ??
+              stockData['userId'] ??
+              stockData['createdBy'];
           if (sellerId != null) {
             print('📍 Found seller ID from stock: $sellerId');
             return sellerId;
@@ -229,11 +246,12 @@ class OrderService {
         }
 
         // Method 2: Try to find from recipes collection
-        final recipeQuery = await _firestore
-            .collection('recipes')
-            .where('name', isEqualTo: firstItem.recipeName)
-            .limit(1)
-            .get();
+        final recipeQuery =
+            await _firestore
+                .collection('recipes')
+                .where('name', isEqualTo: firstItem.recipeName)
+                .limit(1)
+                .get();
 
         if (recipeQuery.docs.isNotEmpty) {
           final recipeData = recipeQuery.docs.first.data();
@@ -246,11 +264,12 @@ class OrderService {
       }
 
       // Method 3: Find any available seller (for demo purposes)
-      final sellersQuery = await _firestore
-          .collection('users')
-          .where('userType', isEqualTo: 'seller')
-          .limit(1)
-          .get();
+      final sellersQuery =
+          await _firestore
+              .collection('users')
+              .where('userType', isEqualTo: 'seller')
+              .limit(1)
+              .get();
 
       if (sellersQuery.docs.isNotEmpty) {
         final sellerId = sellersQuery.docs.first.id;
@@ -261,7 +280,6 @@ class OrderService {
       // Method 4: Fall back to default seller
       print('⚠️ Using default seller - consider implementing store selection');
       return 'default_seller_id';
-
     } catch (e) {
       print('❌ Error determining seller ID: $e');
       return 'default_seller_id';
@@ -278,13 +296,14 @@ class OrderService {
 
       print('📋 Fetching order history for user: $currentUserId');
 
-      final snapshot = await _firestore
-          .collection('users')
-          .doc(currentUserId!)
-          .collection('orders')
-          .orderBy('createdAt', descending: true)
-          .limit(20)
-          .get();
+      final snapshot =
+          await _firestore
+              .collection('users')
+              .doc(currentUserId!)
+              .collection('orders')
+              .orderBy('createdAt', descending: true)
+              .limit(20)
+              .get();
 
       print('📋 Found ${snapshot.docs.length} orders');
 
@@ -297,10 +316,12 @@ class OrderService {
           'createdAt': data['createdAt'],
           'itemCount': data['itemCount'] ?? 0,
           'shippingMethod': data['shippingMethod'] ?? 'delivery',
-          'orderNumber': data['orderNumber'] ?? data['orderId']?.toString().substring(6) ?? '',
+          'orderNumber':
+              data['orderNumber'] ??
+              data['orderId']?.toString().substring(6) ??
+              '',
         };
       }).toList();
-
     } catch (e) {
       print('❌ Error getting order history: $e');
       return [];
@@ -344,7 +365,8 @@ class OrderService {
       batch.update(orderRef, {
         'status': 'cancelled',
         'cancelledAt': FieldValue.serverTimestamp(),
-        'statusLastUpdated': FieldValue.serverTimestamp(), // ⚠️ Track when status changed
+        'statusLastUpdated':
+            FieldValue.serverTimestamp(), // ⚠️ Track when status changed
       });
 
       // Update user's order reference
@@ -354,15 +376,12 @@ class OrderService {
           .collection('orders')
           .doc(orderId);
 
-      batch.update(userOrderRef, {
-        'status': 'cancelled',
-      });
+      batch.update(userOrderRef, {'status': 'cancelled'});
 
       await batch.commit();
 
       print('✅ Order cancelled: $orderId');
       return true;
-
     } catch (e) {
       print('❌ Error cancelling order: $e');
       return false;
@@ -381,16 +400,17 @@ class OrderService {
 
     Query query = _firestore
         .collection('orders')
-        .where('sellerId', isEqualTo: currentUserId); // Filter by current seller's ID
+        .where(
+          'sellerId',
+          isEqualTo: currentUserId,
+        ); // Filter by current seller's ID
 
     // Add status filter if provided
     if (status != null && status != 'all' && status.isNotEmpty) {
       query = query.where('status', isEqualTo: status);
     }
 
-    return query
-        .orderBy('createdAt', descending: true)
-        .snapshots();
+    return query.orderBy('createdAt', descending: true).snapshots();
   }
 
   // ⚠️ FIXED: Update order status (seller action) - WITH PROPER NOTIFICATIONS
@@ -425,7 +445,8 @@ class OrderService {
       // Prepare update data
       Map<String, dynamic> updateData = {
         'status': newStatus,
-        'statusLastUpdated': FieldValue.serverTimestamp(), // ⚠️ Track when changed
+        'statusLastUpdated':
+            FieldValue.serverTimestamp(), // ⚠️ Track when changed
         'updatedAt': FieldValue.serverTimestamp(),
         'updatedBy': currentUserId, // Track who made the change
       };
@@ -475,17 +496,20 @@ class OrderService {
 
         // Use the public method from notification bridge
         _notificationBridge.createStatusUpdateNotificationForBuyer(
-            orderId,
-            newStatus,
-            updatedOrderData
+          orderId,
+          newStatus,
+          updatedOrderData,
         );
       } else {
-        print('🚫 No notification sent - no actual status change or no user ID');
+        print(
+          '🚫 No notification sent - no actual status change or no user ID',
+        );
       }
 
-      print('✅ Order status updated successfully from $currentStatus to $newStatus');
+      print(
+        '✅ Order status updated successfully from $currentStatus to $newStatus',
+      );
       return true;
-
     } catch (e) {
       print('❌ Error updating order status: $e');
       return false;
@@ -529,16 +553,16 @@ class OrderService {
       final userId = orderData?['userId'];
       if (userId != null) {
         batch.update(
-            _firestore
-                .collection('users')
-                .doc(userId)
-                .collection('orders')
-                .doc(orderId),
-            {
-              'status': 'rejected',
-              'rejectedAt': FieldValue.serverTimestamp(),
-              'statusLastUpdated': FieldValue.serverTimestamp(),
-            }
+          _firestore
+              .collection('users')
+              .doc(userId)
+              .collection('orders')
+              .doc(orderId),
+          {
+            'status': 'rejected',
+            'rejectedAt': FieldValue.serverTimestamp(),
+            'statusLastUpdated': FieldValue.serverTimestamp(),
+          },
         );
       }
 
@@ -553,15 +577,14 @@ class OrderService {
 
         // Use the public method from notification bridge
         _notificationBridge.createStatusUpdateNotificationForBuyer(
-            orderId,
-            'rejected',
-            updatedOrderData
+          orderId,
+          'rejected',
+          updatedOrderData,
         );
       }
 
       print('✅ Order rejected successfully');
       return true;
-
     } catch (e) {
       print('❌ Error rejecting order: $e');
       return false;
@@ -587,10 +610,11 @@ class OrderService {
         };
       }
 
-      final snapshot = await _firestore
-          .collection('orders')
-          .where('sellerId', isEqualTo: currentUserId)
-          .get();
+      final snapshot =
+          await _firestore
+              .collection('orders')
+              .where('sellerId', isEqualTo: currentUserId)
+              .get();
 
       Map<String, dynamic> stats = {
         'total': snapshot.docs.length,
@@ -643,7 +667,6 @@ class OrderService {
       }
 
       return stats;
-
     } catch (e) {
       print('❌ Error getting order statistics: $e');
       return {
@@ -667,11 +690,12 @@ class OrderService {
     try {
       if (currentUserId == null) return 0.0;
 
-      final snapshot = await _firestore
-          .collection('orders')
-          .where('sellerId', isEqualTo: currentUserId)
-          .where('status', isEqualTo: 'delivered')
-          .get();
+      final snapshot =
+          await _firestore
+              .collection('orders')
+              .where('sellerId', isEqualTo: currentUserId)
+              .where('status', isEqualTo: 'delivered')
+              .get();
 
       double totalSales = 0.0;
       for (var doc in snapshot.docs) {
@@ -695,10 +719,14 @@ class OrderService {
 
     switch (method) {
       case models.ShippingMethod.delivery:
-        estimatedTime = now.add(const Duration(hours: 2)); // 2 hours for delivery
+        estimatedTime = now.add(
+          const Duration(hours: 2),
+        ); // 2 hours for delivery
         break;
       case models.ShippingMethod.selfPickup:
-        estimatedTime = now.add(const Duration(minutes: 30)); // 30 minutes for pickup
+        estimatedTime = now.add(
+          const Duration(minutes: 30),
+        ); // 30 minutes for pickup
         break;
     }
 
@@ -723,5 +751,107 @@ class OrderService {
       'total': total,
       'shippingMethod': shippingMethod.name,
     };
+  }
+
+  // 📦 NEW METHOD: Reduce stock for ordered items using recipe stock links
+  Future<void> _reduceStockForOrder(List<CartItem> cartItems) async {
+    try {
+      print('📦 Starting stock reduction for ${cartItems.length} items...');
+
+      for (final cartItem in cartItems) {
+        print(
+          '📦 Processing ingredient: ${cartItem.name} (quantity: ${cartItem.quantity})',
+        );
+
+        // Step 1: Get the original recipe ingredient data to find linkedStockId
+        String? linkedStockId;
+
+        try {
+          // Find the recipe and get the ingredient with stock link
+          final recipeQuery =
+              await _firestore
+                  .collection('recipes')
+                  .doc(cartItem.recipeId)
+                  .get();
+
+          if (recipeQuery.exists) {
+            final recipeData = recipeQuery.data();
+            final ingredients =
+                recipeData?['ingredients'] as List<dynamic>? ?? [];
+
+            // Find the matching ingredient by name
+            for (final ingredient in ingredients) {
+              if (ingredient['name'] == cartItem.name) {
+                linkedStockId = ingredient['linkedStockId'];
+                print(
+                  '📦 Found linked stock ID: $linkedStockId for ${cartItem.name}',
+                );
+                break;
+              }
+            }
+          }
+        } catch (e) {
+          print('⚠️ Error finding recipe data: $e');
+        }
+
+        // Step 2: Reduce stock using the linkedStockId
+        if (linkedStockId != null && linkedStockId.isNotEmpty) {
+          try {
+            // Get current stock
+            final stockDoc =
+                await _firestore.collection('stocks').doc(linkedStockId).get();
+
+            if (stockDoc.exists) {
+              final stockData = stockDoc.data()!;
+              final currentStock = stockData['stock'] ?? 0;
+              final newStock = currentStock - cartItem.quantity;
+              final stockName = stockData['name'] ?? 'Unknown';
+
+              print('📦 ${stockName}: $currentStock → $newStock');
+
+              if (newStock >= 0) {
+                // Update stock directly in Firestore
+                await _firestore.collection('stocks').doc(linkedStockId).update(
+                  {
+                    'stock': newStock,
+                    'updatedAt': FieldValue.serverTimestamp(),
+                    'isLowStock':
+                        newStock <= 10, // Auto-mark as low stock if <= 10
+                  },
+                );
+                print('✅ Stock updated for ${stockName}');
+              } else {
+                print(
+                  '⚠️ Warning: ${stockName} would have negative stock ($newStock)',
+                );
+                // Still allow the order but set stock to 0
+                await _firestore.collection('stocks').doc(linkedStockId).update(
+                  {
+                    'stock': 0,
+                    'updatedAt': FieldValue.serverTimestamp(),
+                    'isLowStock': true, // Mark as low stock when it reaches 0
+                  },
+                );
+                print('⚠️ Set stock to 0 for ${stockName}');
+              }
+            } else {
+              print('❌ Stock document not found for ID: $linkedStockId');
+            }
+          } catch (e) {
+            print('❌ Error updating stock for $linkedStockId: $e');
+          }
+        } else {
+          print('⚠️ No linked stock ID found for ingredient: ${cartItem.name}');
+          print(
+            '💡 Seller needs to link this ingredient to stock in recipe editor',
+          );
+        }
+      }
+
+      print('✅ Stock reduction completed successfully');
+    } catch (e) {
+      print('❌ Error reducing stock: $e');
+      // Don't throw error here as the order was already created successfully
+    }
   }
 }
