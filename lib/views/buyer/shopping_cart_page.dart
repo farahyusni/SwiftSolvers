@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../viewmodels/cart_viewmodel.dart';
 import '../../models/cart_model.dart';
 import 'checkout_page.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class ShoppingCartPage extends StatelessWidget {
   const ShoppingCartPage({Key? key}) : super(key: key);
@@ -25,9 +26,14 @@ class _ShoppingCartViewState extends State<ShoppingCartView> {
   Set<String> _selectedItemIds = {};
   bool _selectAll = false;
 
+  List<Map<String, dynamic>> _availableSellers = [];
+  String? _selectedSellerId;
+  bool _isLoadingSellers = true;
+
   @override
   void initState() {
     super.initState();
+    _loadSellers();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final cartViewModel = Provider.of<CartViewModel>(context, listen: false);
       cartViewModel.loadCart().then((_) {
@@ -41,6 +47,44 @@ class _ShoppingCartViewState extends State<ShoppingCartView> {
       });
     });
   }
+
+  Future<void> _loadSellers() async {
+  try {
+    setState(() {
+      _isLoadingSellers = true;
+    });
+
+    // Query Firestore for users with userType "seller"
+    final QuerySnapshot sellersQuery = await FirebaseFirestore.instance
+        .collection('users')
+        .where('userType', isEqualTo: 'seller')
+        .get();
+
+    final List<Map<String, dynamic>> sellers = sellersQuery.docs.map((doc) {
+      final data = doc.data() as Map<String, dynamic>;
+      return {
+        'id': doc.id,
+        'name': data['fullName'] ?? 'Unknown Seller',
+        'email': data['email'] ?? '',
+      };
+    }).toList();
+
+    setState(() {
+      _availableSellers = sellers;
+      _selectedSellerId = sellers.isNotEmpty ? sellers.first['id'] : null;
+      _isLoadingSellers = false;
+    });
+  } catch (e) {
+    print('Error loading sellers: $e');
+    setState(() {
+      _availableSellers = [
+        {'id': 'default', 'name': 'Default Store'}
+      ];
+      _selectedSellerId = 'default';
+      _isLoadingSellers = false;
+    });
+  }
+}
 
   void _toggleSelectAll(CartViewModel cartViewModel) {
     setState(() {
@@ -329,6 +373,48 @@ class _ShoppingCartViewState extends State<ShoppingCartView> {
     BuildContext context,
     CartViewModel cartViewModel,
   ) {
+    if (_isLoadingSellers) {
+      return Container(
+        margin: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 10,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFF5B9E).withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Icon(Icons.store, color: Color(0xFFFF5B9E), size: 20),
+            ),
+            const SizedBox(width: 12),
+            const Expanded(
+              child: Text(
+                'Loading sellers...',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+              ),
+            ),
+            const SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
+          ],
+        ),
+      );
+    }
+
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 8, 16, 0),
       padding: const EdgeInsets.all(16),
@@ -369,7 +455,7 @@ class _ShoppingCartViewState extends State<ShoppingCartView> {
                 ),
                 const SizedBox(height: 2),
                 DropdownButton<String>(
-                  value: cartViewModel.selectedStore,
+                  value: _selectedSellerId,
                   isExpanded: true,
                   underline: const SizedBox.shrink(),
                   style: const TextStyle(
@@ -377,24 +463,25 @@ class _ShoppingCartViewState extends State<ShoppingCartView> {
                     fontWeight: FontWeight.w600,
                     color: Colors.black,
                   ),
-                  items:
-                      cartViewModel.availableStores.map((store) {
-                        return DropdownMenuItem<String>(
-                          value: store['id'],
-                          child: Text(store['name']),
-                        );
-                      }).toList(),
-                  onChanged: (String? newStore) {
-                    if (newStore != null) {
-                      cartViewModel.changeStore(newStore);
+                  items: _availableSellers.map((seller) {
+                    return DropdownMenuItem<String>(
+                      value: seller['id'],
+                      child: Text(seller['name']),
+                    );
+                  }).toList(),
+                  onChanged: (String? newSellerId) {
+                    if (newSellerId != null) {
+                      setState(() {
+                        _selectedSellerId = newSellerId;
+                      });
+                      // You can also update the cart's selected store if needed
+                      // cartViewModel.changeStore(newSellerId);
                     }
                   },
                 ),
               ],
             ),
           ),
-
-          Icon(Icons.info_outline, size: 20, color: Colors.grey[400]),
         ],
       ),
     );
