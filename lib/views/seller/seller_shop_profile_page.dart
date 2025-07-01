@@ -1,9 +1,44 @@
 import 'package:flutter/material.dart';
 import 'edit_seller_shop_profile_page.dart';
 
-
-class SellerShopProfilePage extends StatelessWidget {
+class SellerShopProfilePage extends StatefulWidget {
   const SellerShopProfilePage({Key? key}) : super(key: key);
+
+  @override
+  State<SellerShopProfilePage> createState() => _SellerShopProfilePageState();
+}
+
+class _SellerShopProfilePageState extends State<SellerShopProfilePage> {
+  // Shop data that can be updated
+  String shopName = 'Jaya Grocer';
+  String phone = '0175412365';
+  String address = '2 Jalan Maju 3';
+  String email = 'jgrocer@gmail.com';
+
+  void _navigateToEditProfile() async {
+    final result = await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => EditSellerShopProfilePage(
+          initialData: {
+            'shopName': shopName,
+            'phone': phone,
+            'address': address,
+            'email': email,
+          },
+        ),
+      ),
+    );
+
+    // Update the data if result is returned
+    if (result != null && result is Map<String, String>) {
+      setState(() {
+        shopName = result['shopName'] ?? shopName;
+        phone = result['phone'] ?? phone;
+        address = result['address'] ?? address;
+        email = result['email'] ?? email;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -34,46 +69,47 @@ class SellerShopProfilePage extends StatelessWidget {
                 ),
               ),
 
-              // Store Logo
-              const CircleAvatar(
+              // Store Logo (Non-editable)
+              CircleAvatar(
                 radius: 60,
-                backgroundColor: Colors.green,
-                child: Text(
-                  'Logo',
-                  style: TextStyle(color: Colors.white, fontSize: 20),
+                backgroundColor: Colors.pink.shade200,
+                child: const Icon(
+                  Icons.store,
+                  color: Colors.white,
+                  size: 40,
                 ),
               ),
               const SizedBox(height: 10),
 
-              // Shop Name
-              const Text(
-                'Segi Fresh Bagan Serai',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              // Shop Name - Dynamic
+              Text(
+                shopName,
+                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
               ),
 
-              // Address
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 20.0, vertical: 8),
+              // Address - Dynamic
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 8),
                 child: Text(
-                  'No. 40-G, 42-G & 44-G, Jalan Syed Thaupy 2,\nPusat Bandar Baru, 34300 Bagan Serai, Perak',
+                  address,
                   textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 14),
+                  style: const TextStyle(fontSize: 14),
                 ),
               ),
 
-              // Phone and Email
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 20.0),
+              // Phone and Email - Dynamic
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20.0),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Icons.phone, size: 16),
-                    SizedBox(width: 5),
-                    Text('012-438 8744'),
-                    SizedBox(width: 10),
-                    Icon(Icons.email, size: 16),
-                    SizedBox(width: 5),
-                    Text('segifreshbs@gmail.com'),
+                    const Icon(Icons.phone, size: 16),
+                    const SizedBox(width: 5),
+                    Text(phone),
+                    const SizedBox(width: 10),
+                    const Icon(Icons.email, size: 16),
+                    const SizedBox(width: 5),
+                    Text(email),
                   ],
                 ),
               ),
@@ -90,13 +126,10 @@ class SellerShopProfilePage extends StatelessWidget {
                   'Local Market',
                   'Food Retailer',
                 ],
-               trailing: TextButton(
-  onPressed: () {
-    Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => const EditSellerShopProfilePage()),
-    );
-  },child: const Text("Edit Profile", style: TextStyle(color: Colors.black54)),
-),
+                trailing: TextButton(
+                  onPressed: _navigateToEditProfile,
+                  child: const Text("Edit Profile", style: TextStyle(color: Colors.black54)),
+                ),
               ),
 
               // Business Hours
@@ -118,7 +151,7 @@ class SellerShopProfilePage extends StatelessWidget {
                 title: 'Payment Method',
                 content: [
                   'Cash on Delivery & Self Pickup',
-                  'Delivery Coverage: Bagan Serai, Parit Buntar, Selama',
+                  'Delivery Coverage: Kuala Lumpur, Selangor, Johor',
                   'Pickup Address: Same as shop address',
                 ],
               ),

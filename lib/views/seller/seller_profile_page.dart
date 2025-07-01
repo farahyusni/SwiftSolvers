@@ -90,11 +90,12 @@ class _SellerProfilePageState extends State<SellerProfilePage> {
                               CircleAvatar(
                                 radius: 60,
                                 backgroundColor: AppTheme.lightPinkColor,
-                                child: Icon(
-                                  Icons.store,
-                                  size: 80,
-                                  color: AppTheme.primaryColor,
-                                ),
+                               child: Icon(
+  Icons.person,
+  size: 80,
+  color: AppTheme.primaryColor,
+),
+
                               ),
                               SizedBox(height: 16),
                               Text(

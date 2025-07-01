@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
+import 'dart:io';
 
 class EditSellerShopProfilePage extends StatefulWidget {
-  const EditSellerShopProfilePage({super.key});
+  final Map<String, String>? initialData;
+  
+  const EditSellerShopProfilePage({super.key, this.initialData});
 
   @override
   State<EditSellerShopProfilePage> createState() => _EditSellerShopProfilePageState();
@@ -9,15 +13,33 @@ class EditSellerShopProfilePage extends StatefulWidget {
 
 class _EditSellerShopProfilePageState extends State<EditSellerShopProfilePage> {
   final _formKey = GlobalKey<FormState>();
+  File? _profileImage;
+  final ImagePicker _picker = ImagePicker();
 
   // Controllers for editable fields
-  final _shopNameController = TextEditingController(text: 'Segi Fresh Bagan Serai');
-  final _phoneController = TextEditingController(text: '+60124388744');
-  final _addressController = TextEditingController(
-    text: 'No. 40-G, 42-G & 44-G, Jalan Syed Thaupy 2, Pusat Bandar Baru, 34300 Bagan Serai, Perak',
-  );
-  final _emailController = TextEditingController(text: 'segifreshbs@gmail.com');
+  late final TextEditingController _shopNameController;
+  late final TextEditingController _phoneController;
+  late final TextEditingController _addressController;
+  late final TextEditingController _emailController;
   final _passwordController = TextEditingController(text: '12345678');
+
+  @override
+  void initState() {
+    super.initState();
+    // Initialize controllers with data from previous page or defaults
+    _shopNameController = TextEditingController(
+      text: widget.initialData?['shopName'] ?? 'Jaya Grocer'
+    );
+    _phoneController = TextEditingController(
+      text: widget.initialData?['phone'] ?? '0175412365'
+    );
+    _addressController = TextEditingController(
+      text: widget.initialData?['address'] ?? '2 Jalan Maju 3'
+    );
+    _emailController = TextEditingController(
+      text: widget.initialData?['email'] ?? 'jgrocer@gmail.com'
+    );
+  }
 
   @override
   void dispose() {
@@ -27,6 +49,98 @@ class _EditSellerShopProfilePageState extends State<EditSellerShopProfilePage> {
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
+  }
+
+  Future<void> _pickImage() async {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (BuildContext context) {
+        return Container(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'Select Profile Picture',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 20),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  _imageSourceButton(
+                    icon: Icons.camera_alt,
+                    label: 'Camera',
+                    onTap: () => _getImage(ImageSource.camera),
+                  ),
+                  _imageSourceButton(
+                    icon: Icons.photo_library,
+                    label: 'Gallery',
+                    onTap: () => _getImage(ImageSource.gallery),
+                  ),
+                  if (_profileImage != null)
+                    _imageSourceButton(
+                      icon: Icons.delete,
+                      label: 'Remove',
+                      onTap: _removeImage,
+                      color: Colors.red,
+                    ),
+                ],
+              ),
+              const SizedBox(height: 20),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _imageSourceButton({
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+    Color color = Colors.blue,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Column(
+        children: [
+          CircleAvatar(
+            radius: 30,
+            backgroundColor: color.withOpacity(0.1),
+            child: Icon(icon, color: color, size: 30),
+          ),
+          const SizedBox(height: 8),
+          Text(label, style: TextStyle(color: color)),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _getImage(ImageSource source) async {
+    Navigator.pop(context);
+    final XFile? image = await _picker.pickImage(
+      source: source,
+      maxWidth: 512,
+      maxHeight: 512,
+      imageQuality: 80,
+    );
+    
+    if (image != null) {
+      setState(() {
+        _profileImage = File(image.path);
+      });
+    }
+  }
+
+  void _removeImage() {
+    Navigator.pop(context);
+    setState(() {
+      _profileImage = null;
+    });
   }
 
   void _saveProfile() {
@@ -79,27 +193,50 @@ class _EditSellerShopProfilePageState extends State<EditSellerShopProfilePage> {
 
                 const SizedBox(height: 20),
 
-                // Store Logo with edit icon
-                Stack(
-                  alignment: Alignment.bottomRight,
-                  children: [
-                    const CircleAvatar(
-                      radius: 60,
-                      backgroundColor: Colors.green,
-                      child: Text('Segi\nfresh',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(color: Colors.yellow, fontSize: 22, fontWeight: FontWeight.bold)),
-                    ),
-                    Positioned(
-                      right: 4,
-                      bottom: 4,
-                      child: CircleAvatar(
-                        backgroundColor: Colors.white,
-                        radius: 14,
-                        child: Icon(Icons.edit, size: 18),
+                // Store Logo with edit icon - Updated for Jaya Grocer with image picker
+                GestureDetector(
+                  onTap: _pickImage,
+                  child: Stack(
+                    children: [
+                      CircleAvatar(
+                        radius: 60,
+                        backgroundColor: Colors.pink.shade100,
+                        backgroundImage: _profileImage != null ? FileImage(_profileImage!) : null,
+                        child: _profileImage == null
+                            ? Container(
+                                width: 120,
+                                height: 120,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: Colors.pink.shade200,
+                                ),
+                                child: const Icon(
+                                  Icons.store,
+                                  color: Colors.white,
+                                  size: 40,
+                                ),
+                              )
+                            : null,
                       ),
-                    ),
-                  ],
+                      Positioned(
+                        bottom: 0,
+                        right: 0,
+                        child: Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: Colors.pink.shade400,
+                            shape: BoxShape.circle,
+                            border: Border.all(color: Colors.white, width: 2),
+                          ),
+                          child: const Icon(
+                            Icons.camera_alt,
+                            color: Colors.white,
+                            size: 16,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
 
                 const SizedBox(height: 20),
