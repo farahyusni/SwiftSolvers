@@ -231,47 +231,45 @@ class _BuyerHomePageState extends State<BuyerHomePage>
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          // Empty space to maintain spacing (where back button was)
-          const SizedBox(width: 24),
-
-          // YumCart logo
-          Row(
-            children: [
-              Image.asset(
-                'images/logo.png', // Make sure to add this asset
-                width: 100,
-                height: 100,
-                errorBuilder: (context, error, stackTrace) {
-                  return Container(
-                    width: 100,
-                    height: 100,
-                    decoration: const BoxDecoration(
-                      color: Color(0xFFFF5B9E),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Center(
-                      child: Icon(
-                        Icons.shopping_basket,
-                        color: Colors.white,
-                      ),
-                    ),
-                  );
-                },
-              ),
-              const SizedBox(width: 4),
-            ],
-          ),
-
-          // Action buttons (notifications, cart, favorites, profile)
+          // Left side: Notification and Shopping Cart
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [
               // Notification bell with badge
               _buildNotificationButton(),
-
+              
               // Shopping Cart button with badge
               _buildCartButton(context),
+            ],
+          ),
 
+          // Center: YumCart logo
+          Image.asset(
+            'images/logo.png', // Make sure to add this asset
+            width: 100,
+            height: 100,
+            errorBuilder: (context, error, stackTrace) {
+              return Container(
+                width: 100,
+                height: 100,
+                decoration: const BoxDecoration(
+                  color: Color(0xFFFF5B9E),
+                  shape: BoxShape.circle,
+                ),
+                child: const Center(
+                  child: Icon(
+                    Icons.shopping_basket,
+                    color: Colors.white,
+                  ),
+                ),
+              );
+            },
+          ),
+
+          // Right side: Bookmark and Profile
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
               // Favorites button
               IconButton(
                 icon: const Icon(
