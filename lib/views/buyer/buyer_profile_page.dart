@@ -163,11 +163,6 @@ class _BuyerProfilePageState extends State<BuyerProfilePage> {
 
               SizedBox(height: 24),
 
-              // ADD THIS: Quick Actions Menu
-              _buildQuickActionsMenu(),
-
-              SizedBox(height: 24),
-
               // Profile details (existing code)
               Text(
                 'Profile Information',
@@ -285,124 +280,6 @@ class _BuyerProfilePageState extends State<BuyerProfilePage> {
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  // ADD THIS: Quick Actions Menu Widget
-  Widget _buildQuickActionsMenu() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Quick Actions',
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-            color: AppTheme.primaryColor,
-          ),
-        ),
-        SizedBox(height: 16),
-        
-        // My Orders Menu Item
-        _buildMenuTile(
-          icon: Icons.shopping_bag_outlined,
-          title: 'My Orders',
-          subtitle: 'Track your orders and purchase history',
-          onTap: () {
-            Navigator.of(context).pushNamed('/order-tracking');
-          },
-        ),
-        
-        // Favorites Menu Item
-        _buildMenuTile(
-          icon: Icons.favorite_outline,
-          title: 'My Favorites',
-          subtitle: 'View your saved recipes',
-          onTap: () {
-            Navigator.of(context).pushNamed('/favorites');
-          },
-        ),
-        
-        // Shopping Cart Menu Item
-        _buildMenuTile(
-          icon: Icons.shopping_cart_outlined,
-          title: 'Shopping Cart',
-          subtitle: 'View items in your cart',
-          onTap: () {
-            Navigator.of(context).pushNamed('/shopping-cart');
-          },
-        ),
-        
-        // Settings Menu Item
-        _buildMenuTile(
-          icon: Icons.settings_outlined,
-          title: 'Settings',
-          subtitle: 'Manage your account preferences',
-          onTap: () {
-            // Navigate to settings page when available
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Settings page coming soon!')),
-            );
-          },
-        ),
-      ],
-    );
-  }
-
-  // ADD THIS: Menu Tile Helper Widget
-  Widget _buildMenuTile({
-    required IconData icon,
-    required String title,
-    required String subtitle,
-    required VoidCallback onTap,
-  }) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey[200]!,
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-        leading: Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: AppTheme.primaryColor.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Icon(
-            icon,
-            color: AppTheme.primaryColor,
-            size: 24,
-          ),
-        ),
-        title: Text(
-          title,
-          style: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        subtitle: Text(
-          subtitle,
-          style: TextStyle(
-            fontSize: 14,
-            color: Colors.grey[600],
-          ),
-        ),
-        trailing: const Icon(
-          Icons.chevron_right,
-          color: Colors.grey,
-        ),
-        onTap: onTap,
       ),
     );
   }

@@ -56,14 +56,6 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
             fontWeight: FontWeight.w600,
           ),
         ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.share, color: Colors.white),
-            onPressed: () {
-              // Share order details
-            },
-          ),
-        ],
       ),
       body: isLoading
           ? const Center(child: CircularProgressIndicator())
@@ -202,10 +194,10 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
         'isCompleted': status != 'pending',
       },
       {
-        'title': 'Preparing Order',
-        'subtitle': 'Your items are being prepared',
-        'icon': Icons.inventory_2,
-        'isCompleted': ['confirmed', 'preparing', 'ready', 'outForDelivery', 'delivered'].contains(status),
+        'title': 'Ready for Pickup/Delivery',     
+        'subtitle': 'Your order is ready',       
+        'icon': Icons.check_circle,              
+        'isCompleted': ['ready', 'delivered'].contains(status),  
       },
       {
         'title': 'Out for Delivery',
@@ -600,21 +592,6 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
                 child: const Text('Cancel Order'),
               ),
             ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: ElevatedButton(
-                onPressed: () => _payNow(),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFFF5B9E),
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                ),
-                child: const Text('Pay Now'),
-              ),
-            ),
           ] else if (status == 'delivered') ...[
             Expanded(
               child: OutlinedButton(
@@ -672,7 +649,7 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
                     borderRadius: BorderRadius.circular(8),
                   ),
                 ),
-                child: const Text('Update Status'),
+                child: const Text('Refresh Status'),
               ),
             ),
           ],

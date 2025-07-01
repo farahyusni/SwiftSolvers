@@ -108,7 +108,7 @@ class _OrderTrackingPageState extends State<OrderTrackingPage>
                       controller: _tabController,
                       children: [
                         _buildOrderList('pending'), // To Pay
-                        _buildOrderList('confirmed'), // To Ship
+                        _buildOrderList('processing'), // To Ship
                         _buildOrderList('ready'), // To Receive
                         _buildOrderList('delivered'), // Completed
                         _buildOrderList('cancelled'), // Return/Refund
@@ -280,20 +280,6 @@ class _OrderTrackingPageState extends State<OrderTrackingPage>
                 children: [
                   Row(
                     children: [
-                      Container(
-                        width: 60,
-                        height: 60,
-                        decoration: BoxDecoration(
-                          color: Colors.grey[100],
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Icon(
-                          Icons.shopping_bag_outlined,
-                          color: Colors.grey[400],
-                          size: 30,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -344,20 +330,6 @@ class _OrderTrackingPageState extends State<OrderTrackingPage>
                               ),
                             ),
                             child: const Text('Cancel'),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: ElevatedButton(
-                            onPressed: () => _payNow(orderId),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFFFF5B9E),
-                              foregroundColor: Colors.white,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                            ),
-                            child: const Text('Pay Now'),
                           ),
                         ),
                       ] else if (status == 'delivered') ...[
@@ -432,14 +404,12 @@ class _OrderTrackingPageState extends State<OrderTrackingPage>
     switch (status) {
       case 'pending':
         return 'Pending Payment';
-      case 'confirmed':
+      case 'processing':        
         return 'To Ship';
       case 'preparing':
         return 'Preparing';
       case 'ready':
         return 'Ready';
-      case 'outForDelivery':
-        return 'Out for Delivery';
       case 'delivered':
         return 'Delivered';
       case 'cancelled':
@@ -453,11 +423,10 @@ class _OrderTrackingPageState extends State<OrderTrackingPage>
     switch (status) {
       case 'pending':
         return Colors.orange;
-      case 'confirmed':
+      case 'processing':        
       case 'preparing':
         return Colors.blue;
-      case 'ready':
-      case 'outForDelivery':
+      case 'ready':             
         return Colors.green;
       case 'delivered':
         return Colors.teal;
@@ -502,13 +471,6 @@ class _OrderTrackingPageState extends State<OrderTrackingPage>
         ).showSnackBar(SnackBar(content: Text('Failed to cancel order: $e')));
       }
     }
-  }
-
-  void _payNow(String orderId) {
-    // Navigate to payment page
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('Redirecting to payment...')));
   }
 
   void _reorderItems(String orderId) {
